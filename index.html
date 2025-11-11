@@ -1,0 +1,1911 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vector Space Visualizer - Educational Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
+            background: #0a1929;
+            color: #ffffff;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        header {
+            background: rgba(0, 0, 0, 0.4);
+            padding: 2rem 3rem;
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 300;
+            margin-bottom: 0.5rem;
+            letter-spacing: 0.5px;
+        }
+
+        .subtitle {
+            font-size: 0.95rem;
+            opacity: 0.6;
+            font-weight: 300;
+            margin-bottom: 0.75rem;
+        }
+
+        .vector-explanation {
+            font-size: 0.85rem;
+            opacity: 0.75;
+            line-height: 1.5;
+            background: rgba(52, 152, 219, 0.1);
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            border-left: 3px solid rgba(52, 152, 219, 0.5);
+        }
+
+        .canvas-container {
+            flex: 1;
+            position: relative;
+        }
+
+        canvas {
+            display: block;
+            cursor: grab;
+        }
+
+        canvas:active {
+            cursor: grabbing;
+        }
+
+        #breadcrumb {
+            position: absolute;
+            top: 2rem;
+            left: 3rem;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        #backButton {
+            background: rgba(52, 152, 219, 0.15);
+            backdrop-filter: blur(20px);
+            color: #5dade2;
+            border: 1px solid rgba(52, 152, 219, 0.3);
+            padding: 0.75rem 1.5rem;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            font-weight: 400;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            transition: all 0.2s ease;
+        }
+
+        #backButton:hover {
+            background: rgba(52, 152, 219, 0.25);
+            border-color: rgba(52, 152, 219, 0.5);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(52, 152, 219, 0.15);
+        }
+
+        #breadcrumbPath {
+            display: inline-block;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.95rem;
+            font-weight: 300;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 0.75rem 1.5rem;
+            border-radius: 10px;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+
+        .fade {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .controls {
+            position: absolute;
+            top: 2rem;
+            right: 3rem;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 1.125rem;
+            border-radius: 10px;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            width: 250px;
+            max-width: 250px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+            z-index: 50;
+        }
+
+        canvas {
+            display: block;
+            cursor: grab;
+            touch-action: none;
+        }
+
+        .control-label {
+            display: block;
+            font-size: 0.7rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            opacity: 0.9;
+        }
+
+        select, input[type="text"] {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 0.5rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        select {
+            cursor: pointer;
+        }
+
+        input[type="text"] {
+            transition: border-color 0.2s, background 0.2s;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: rgba(52, 152, 219, 0.5);
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        input[type="text"]::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        select option {
+            background: #0a1929;
+            color: white;
+        }
+
+        .info-text {
+            margin-top: 0.6rem;
+            font-size: 0.65rem;
+            line-height: 1.3;
+            opacity: 0.7;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            white-space: normal;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Vector Embedding Space Visualizer</h1>
+            <p class="subtitle">Click to highlight relationships • Double-click to zoom • Scroll to zoom • Drag to rotate • Shift+click to isolate</p>
+            <div class="vector-explanation">
+                <strong>📊 How This Illustrates Vector Embeddings:</strong> In real AI systems, each concept is represented by a high-dimensional vector (a list of hundreds of numbers). We can't visualize that many dimensions, so this shows a simplified 3D projection. Related concepts cluster together because their vectors are mathematically similar. When you select a "context" below, concepts with high similarity to that context light up — just like how AI finds relevant information using vector similarity.
+            </div>
+        </header>
+
+        <div class="canvas-container">
+            <canvas id="canvas"></canvas>
+
+            <div id="breadcrumb" style="display: none;">
+                <button id="backButton">← Back</button>
+                <div id="breadcrumbPath"></div>
+            </div>
+
+            <div class="controls">
+                <label class="control-label">Search (Query Vector)</label>
+                <input type="text" id="searchBox" placeholder="Type to search..." />
+                <div class="info-text" id="searchInfo">
+                    Enter a search query to see similarity matching in action
+                </div>
+
+                <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255, 255, 255, 0.1);">
+                    <label class="control-label">Context Vector (Simulated Prompt)</label>
+                    <select id="conversationScenario">
+                        <option value="">None - Baseline State</option>
+                        <optgroup label="━━━ Accounting & Finance Contexts ━━━">
+                            <option value="tax-audit">Tax Audit Discussion</option>
+                            <option value="financial-planning">Financial Planning Meeting</option>
+                            <option value="year-end-close">Year-End Close Process</option>
+                        </optgroup>
+                        <optgroup label="━━━ Technology & Automation Contexts ━━━">
+                            <option value="automation">Process Automation Project</option>
+                            <option value="system-implementation">System Implementation</option>
+                            <option value="data-analytics">Data Analytics Initiative</option>
+                        </optgroup>
+                        <optgroup label="━━━ People & Communication Contexts ━━━">
+                            <option value="client-issue">Client Relationship Issue</option>
+                            <option value="training">New Staff Training</option>
+                            <option value="team-conflict">Team Conflict Resolution</option>
+                            <option value="difficult-conversation">Delivering Difficult News</option>
+                        </optgroup>
+                        <optgroup label="━━━ Compliance & Risk Contexts ━━━">
+                            <option value="compliance">Compliance Deadline Crunch</option>
+                            <option value="ethics">Ethical Dilemma</option>
+                            <option value="audit-planning">Audit Planning & Risk Assessment</option>
+                        </optgroup>
+                    </select>
+                    <div class="info-text" id="scenarioInfo">
+                        Select a context to see which concept vectors have high similarity scores and "activate"
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // Full hierarchical knowledge graph - 10 categories, ~70 sub-concepts, ~300 details
+        const knowledgeGraph = {
+            'Accounting': {
+                color: '#e74c3c',
+                subConcepts: {
+                    'Debits & Credits': {
+                        details: ['Double-Entry System', 'T-Accounts', 'Normal Balances', 'Journal Entries']
+                    },
+                    'Financial Statements': {
+                        details: ['Balance Sheet', 'Income Statement', 'Cash Flow Statement', 'Statement of Changes in Equity']
+                    },
+                    'Trial Balance': {
+                        details: ['Adjusted Trial Balance', 'Unadjusted Trial Balance', 'Post-Closing Trial Balance']
+                    },
+                    'Chart of Accounts': {
+                        details: ['Asset Accounts', 'Liability Accounts', 'Equity Accounts', 'Revenue Accounts', 'Expense Accounts']
+                    },
+                    'General Ledger': {
+                        details: ['Ledger Accounts', 'Posting Process', 'Account History', 'Audit Trail']
+                    },
+                    'Account Reconciliation': {
+                        details: ['Bank Reconciliation', 'Intercompany Reconciliation', 'Variance Analysis']
+                    },
+                    'Period Close': {
+                        details: ['Month-End Close', 'Quarter-End Close', 'Year-End Close', 'Closing Entries']
+                    }
+                }
+            },
+
+            'Tax & Compliance': {
+                color: '#e67e22',
+                subConcepts: {
+                    'Tax Planning': {
+                        details: ['Strategic Planning', 'Entity Selection', 'Timing Strategies', 'Tax Credits']
+                    },
+                    'Regulations': {
+                        details: ['Federal Tax Code', 'State Regulations', 'Industry-Specific Rules', 'Compliance Deadlines']
+                    },
+                    'Deadlines': {
+                        details: ['Filing Deadlines', 'Extension Requests', 'Payment Deadlines', 'Penalty Avoidance']
+                    },
+                    'Tax Returns': {
+                        details: ['Individual Returns', 'Corporate Returns', 'Partnership Returns', 'Amended Returns']
+                    },
+                    'Tax Research': {
+                        details: ['Case Law', 'Revenue Rulings', 'Private Letter Rulings', 'Tax Court Decisions']
+                    },
+                    'Tax Credits & Deductions': {
+                        details: ['Business Credits', 'Individual Deductions', 'Depreciation', 'Loss Carryforwards']
+                    }
+                }
+            },
+
+            'Audit & Risk': {
+                color: '#f39c12',
+                subConcepts: {
+                    'Audit Trail': {
+                        details: ['Source Documents', 'Transaction History', 'Approval Chains', 'Document Retention']
+                    },
+                    'Risk Assessment': {
+                        details: ['Materiality Analysis', 'Inherent Risk', 'Control Risk', 'Detection Risk']
+                    },
+                    'Evidence': {
+                        details: ['Sufficient Evidence', 'Appropriate Evidence', 'Physical Inspection', 'Third-Party Confirmation']
+                    },
+                    'Internal Controls': {
+                        details: ['Segregation of Duties', 'Authorization Controls', 'Reconciliation Controls', 'IT Controls']
+                    },
+                    'Audit Procedures': {
+                        details: ['Substantive Testing', 'Test of Controls', 'Analytical Procedures', 'Sampling']
+                    },
+                    'Fraud Detection': {
+                        details: ['Red Flags', 'Fraud Triangle', 'Investigative Procedures', 'Forensic Analysis']
+                    },
+                    'Audit Reports': {
+                        details: ['Unqualified Opinion', 'Qualified Opinion', 'Adverse Opinion', 'Disclaimer']
+                    }
+                }
+            },
+
+            'Financial Analysis': {
+                color: '#2ecc71',
+                subConcepts: {
+                    'Financial Ratios': {
+                        details: ['Liquidity Ratios', 'Profitability Ratios', 'Leverage Ratios', 'Efficiency Ratios']
+                    },
+                    'Trends': {
+                        details: ['Horizontal Analysis', 'Vertical Analysis', 'Trend Analysis', 'Common Size Statements']
+                    },
+                    'Forecasting': {
+                        details: ['Budget Projections', 'Cash Flow Forecasting', 'Scenario Analysis', 'Sensitivity Analysis']
+                    },
+                    'Benchmarking': {
+                        details: ['Industry Comparisons', 'Peer Analysis', 'Best Practices', 'Performance Metrics']
+                    },
+                    'Valuation': {
+                        details: ['DCF Analysis', 'Comparable Company Analysis', 'Precedent Transactions', 'Asset-Based Valuation']
+                    },
+                    'Financial Models': {
+                        details: ['Three-Statement Model', 'DCF Model', 'LBO Model', 'Scenario Planning']
+                    },
+                    'Cost Analysis': {
+                        details: ['Fixed vs Variable', 'Break-Even Analysis', 'Cost Allocation', 'Activity-Based Costing']
+                    }
+                }
+            },
+
+            'Technology': {
+                color: '#3498db',
+                subConcepts: {
+                    'Automation': {
+                        details: ['Workflow Automation', 'Data Entry Automation', 'Report Generation', 'Process Optimization']
+                    },
+                    'Data Analysis': {
+                        details: ['Data Mining', 'Statistical Analysis', 'Predictive Analytics', 'Data Visualization']
+                    },
+                    'Documentation': {
+                        details: ['Digital Filing', 'Version Control', 'Knowledge Management', 'Collaborative Documents']
+                    },
+                    'Software Systems': {
+                        details: ['ERP Systems', 'Tax Software', 'Audit Software', 'Practice Management']
+                    },
+                    'AI & Machine Learning': {
+                        details: ['Natural Language Processing', 'Predictive Models', 'Anomaly Detection', 'Process Intelligence']
+                    },
+                    'Cybersecurity': {
+                        details: ['Data Protection', 'Access Controls', 'Encryption', 'Incident Response']
+                    },
+                    'Cloud Computing': {
+                        details: ['Cloud Storage', 'SaaS Applications', 'Collaboration Tools', 'Backup & Recovery']
+                    }
+                }
+            },
+
+            'Communication': {
+                color: '#9b59b6',
+                subConcepts: {
+                    'Client Expectations': {
+                        details: ['Scope Definition', 'Timeline Communication', 'Fee Agreements', 'Service Level Agreements']
+                    },
+                    'Transparency': {
+                        details: ['Clear Communication', 'Proactive Updates', 'Honest Limitations', 'Realistic Timelines']
+                    },
+                    'Feedback': {
+                        details: ['Client Feedback', 'Peer Review', 'Performance Reviews', 'Continuous Improvement']
+                    },
+                    'Presentations': {
+                        details: ['Financial Reports', 'Board Presentations', 'Stakeholder Updates', 'Visual Communication']
+                    },
+                    'Written Communication': {
+                        details: ['Professional Emails', 'Memo Writing', 'Report Writing', 'Documentation']
+                    },
+                    'Active Listening': {
+                        details: ['Client Needs', 'Clarifying Questions', 'Empathetic Response', 'Note Taking']
+                    },
+                    'Difficult Conversations': {
+                        details: ['Delivering Bad News', 'Conflict Resolution', 'Expectation Management', 'Boundary Setting']
+                    }
+                }
+            },
+
+            'Problem Solving': {
+                color: '#1abc9c',
+                subConcepts: {
+                    'Pattern Recognition': {
+                        details: ['Anomaly Detection', 'Trend Identification', 'Recurring Issues', 'Industry Patterns']
+                    },
+                    'Creativity': {
+                        details: ['Alternative Solutions', 'Innovative Approaches', 'Brainstorming', 'Out-of-Box Thinking']
+                    },
+                    'Professional Judgment': {
+                        details: ['Materiality Decisions', 'Risk Evaluation', 'Ethical Dilemmas', 'Complex Situations']
+                    },
+                    'Root Cause Analysis': {
+                        details: ['5 Whys', 'Fishbone Diagrams', 'Process Mapping', 'System Thinking']
+                    },
+                    'Decision Making': {
+                        details: ['Cost-Benefit Analysis', 'Risk Assessment', 'Scenario Planning', 'Stakeholder Input']
+                    },
+                    'Critical Thinking': {
+                        details: ['Logical Analysis', 'Assumption Testing', 'Evidence Evaluation', 'Bias Recognition']
+                    },
+                    'Troubleshooting': {
+                        details: ['Issue Diagnosis', 'Solution Testing', 'Workarounds', 'Technical Support']
+                    }
+                }
+            },
+
+            'Ethics': {
+                color: '#95a5a6',
+                subConcepts: {
+                    'Professional Standards': {
+                        details: ['AICPA Code', 'Independence Rules', 'Competence Requirements', 'Due Care']
+                    },
+                    'Trust': {
+                        details: ['Confidentiality', 'Reliability', 'Consistency', 'Integrity']
+                    },
+                    'Independence': {
+                        details: ['Objectivity', 'Conflict of Interest', 'Appearance of Independence', 'Mental Independence']
+                    },
+                    'Confidentiality': {
+                        details: ['Client Privacy', 'Data Protection', 'Privileged Information', 'Non-Disclosure']
+                    },
+                    'Conflict of Interest': {
+                        details: ['Identification', 'Disclosure', 'Management', 'Avoidance']
+                    },
+                    'Professional Skepticism': {
+                        details: ['Questioning Attitude', 'Critical Assessment', 'Evidence Evaluation', 'Fraud Awareness']
+                    },
+                    'Ethical Dilemmas': {
+                        details: ['Competing Interests', 'Gray Areas', 'Stakeholder Conflicts', 'Personal vs Professional']
+                    }
+                }
+            },
+
+            'Time Management': {
+                color: '#34495e',
+                subConcepts: {
+                    'Prioritization': {
+                        details: ['Urgent vs Important', 'Client Priorities', 'Resource Allocation', 'Task Ranking']
+                    },
+                    'Efficiency': {
+                        details: ['Process Optimization', 'Elimination of Waste', 'Standardization', 'Best Practices']
+                    },
+                    'Focus': {
+                        details: ['Deep Work', 'Concentration', 'Distraction Management', 'Single-Tasking']
+                    },
+                    'Scheduling': {
+                        details: ['Calendar Management', 'Time Blocking', 'Meeting Planning', 'Buffer Time']
+                    },
+                    'Delegation': {
+                        details: ['Task Assignment', 'Authority Transfer', 'Follow-Up', 'Team Development']
+                    },
+                    'Workflow Management': {
+                        details: ['Process Design', 'Bottleneck Identification', 'Resource Planning', 'Continuous Flow']
+                    },
+                    'Deadline Management': {
+                        details: ['Timeline Planning', 'Milestone Tracking', 'Risk Buffering', 'Communication']
+                    }
+                }
+            },
+
+            'Relationships': {
+                color: '#e91e63',
+                subConcepts: {
+                    'Collaboration': {
+                        details: ['Team Projects', 'Cross-Functional Work', 'Knowledge Sharing', 'Collective Problem Solving']
+                    },
+                    'Mentorship': {
+                        details: ['Guidance', 'Skill Development', 'Career Advice', 'Role Modeling']
+                    },
+                    'Experience': {
+                        details: ['Years in Practice', 'Industry Knowledge', 'Technical Expertise', 'Lessons Learned']
+                    },
+                    'Learning': {
+                        details: ['CPE Requirements', 'Technical Training', 'Soft Skills', 'Industry Updates']
+                    },
+                    'Networking': {
+                        details: ['Professional Organizations', 'Industry Events', 'Peer Connections', 'Referral Relationships']
+                    },
+                    'Team Building': {
+                        details: ['Trust Development', 'Culture Creation', 'Conflict Resolution', 'Shared Goals']
+                    },
+                    'Client Relationships': {
+                        details: ['Relationship Building', 'Account Management', 'Long-Term Partnerships', 'Value Delivery']
+                    }
+                }
+            }
+        };
+
+        // Define cross-category relationships
+        const relatedCategories = {
+            'Accounting': ['Financial Analysis', 'Tax & Compliance'],
+            'Tax & Compliance': ['Accounting', 'Ethics'],
+            'Audit & Risk': ['Accounting', 'Ethics', 'Problem Solving'],
+            'Financial Analysis': ['Accounting', 'Technology'],
+            'Technology': ['Problem Solving', 'Communication'],
+            'Communication': ['Relationships', 'Problem Solving'],
+            'Problem Solving': ['Technology', 'Communication', 'Ethics'],
+            'Ethics': ['Problem Solving', 'Relationships'],
+            'Time Management': ['Problem Solving', 'Technology'],
+            'Relationships': ['Communication', 'Ethics']
+        };
+
+        // Canvas setup
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const breadcrumb = document.getElementById('breadcrumb');
+        const backButton = document.getElementById('backButton');
+        const breadcrumbPath = document.getElementById('breadcrumbPath');
+
+        function resizeCanvas() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', () => {
+            resizeCanvas();
+            // Nodes will recenter automatically in the next draw cycle
+        });
+
+        // Zoom state
+        let zoomLevel = 0; // 0 = categories, 1 = sub-concepts, 2 = details
+        let zoomPath = []; // Track where we are
+        let nodes = [];
+        let hoveredNode = null;
+        let selectedNode = null; // NEW: Track selected node for highlighting
+        let isDraggingRotation = false;
+        let lastMouseX = 0;
+        let lastMouseY = 0;
+        let rotationX = 0;
+        let rotationY = 0;
+        let autoRotate = true;
+
+        // Double-click detection
+        let lastClickTime = 0;
+        let lastClickedNode = null;
+        const DOUBLE_CLICK_THRESHOLD = 300; // ms
+
+        // Camera zoom
+        let cameraZoom = 1.0;
+        const MIN_ZOOM = 0.5;
+        const MAX_ZOOM = 3.0;
+
+        // Isolated category (for filtering)
+        let isolatedCategory = null;
+
+        // Search state
+        let searchQuery = '';
+        let searchMatches = new Set(); // Set of node labels that match search
+
+        // Conversation scenarios - defines which categories become "hot"
+        // Heat values: 3.0 = maximum activation, 2.5-2.8 = strong activation, 1.5-2.0 = moderate, 1.0 = baseline (unaffected)
+        const conversationScenarios = {
+            // Accounting & Finance Contexts
+            'tax-audit': {
+                description: 'Tax Audit context vector → Extreme similarity with Tax & Compliance, strong with Audit & Risk',
+                activeCategories: {
+                    'Tax & Compliance': 3.0,
+                    'Audit & Risk': 2.8,
+                    'Accounting': 2.2
+                }
+            },
+            'financial-planning': {
+                description: 'Financial Planning context → Strongly activates Financial Analysis and Accounting clusters',
+                activeCategories: {
+                    'Financial Analysis': 3.0,
+                    'Accounting': 2.7,
+                    'Communication': 2.0
+                }
+            },
+            'year-end-close': {
+                description: 'Year-End Close context → Heavy activation of Accounting, Time Management under pressure',
+                activeCategories: {
+                    'Accounting': 3.0,
+                    'Time Management': 2.8,
+                    'Audit & Risk': 2.3
+                }
+            },
+
+            // Technology & Automation Contexts
+            'automation': {
+                description: 'Automation context → Dominant Technology activation with Problem Solving support',
+                activeCategories: {
+                    'Technology': 3.0,
+                    'Problem Solving': 2.6,
+                    'Time Management': 1.8
+                }
+            },
+            'system-implementation': {
+                description: 'System Implementation context → Strong Technology + Problem Solving + Communication triad',
+                activeCategories: {
+                    'Technology': 3.0,
+                    'Problem Solving': 2.7,
+                    'Communication': 2.4
+                }
+            },
+            'data-analytics': {
+                description: 'Data Analytics context → Technology + Financial Analysis convergence',
+                activeCategories: {
+                    'Technology': 3.0,
+                    'Financial Analysis': 2.8,
+                    'Problem Solving': 2.2
+                }
+            },
+
+            // People & Communication Contexts
+            'client-issue': {
+                description: 'Client Relationship context → Heavy Communication, Relationships, and Ethics activation',
+                activeCategories: {
+                    'Relationships': 3.0,
+                    'Communication': 2.9,
+                    'Ethics': 2.3
+                }
+            },
+            'training': {
+                description: 'Training context → Strong Relationships and Communication focus',
+                activeCategories: {
+                    'Relationships': 3.0,
+                    'Communication': 2.8,
+                    'Problem Solving': 1.7
+                }
+            },
+            'team-conflict': {
+                description: 'Team Conflict context → Intense Communication, Problem Solving, and Ethics activation',
+                activeCategories: {
+                    'Communication': 3.0,
+                    'Problem Solving': 2.8,
+                    'Relationships': 2.7,
+                    'Ethics': 2.0
+                }
+            },
+            'difficult-conversation': {
+                description: 'Difficult News context → Communication and Relationships dominate with Ethics guidance',
+                activeCategories: {
+                    'Communication': 3.0,
+                    'Relationships': 2.7,
+                    'Ethics': 2.4
+                }
+            },
+
+            // Compliance & Risk Contexts
+            'compliance': {
+                description: 'Deadline Crunch context → Extreme Time Management pressure with Compliance activation',
+                activeCategories: {
+                    'Time Management': 3.0,
+                    'Tax & Compliance': 2.9,
+                    'Problem Solving': 2.1
+                }
+            },
+            'ethics': {
+                description: 'Ethical Dilemma context → Ethics dominates with Problem Solving and Relationships support',
+                activeCategories: {
+                    'Ethics': 3.0,
+                    'Problem Solving': 2.7,
+                    'Relationships': 2.3
+                }
+            },
+            'audit-planning': {
+                description: 'Audit Planning context → Audit & Risk leads with Problem Solving and Accounting analysis',
+                activeCategories: {
+                    'Audit & Risk': 3.0,
+                    'Problem Solving': 2.6,
+                    'Accounting': 2.3
+                }
+            }
+        };
+
+        let currentScenario = null;
+
+        // Calculate similarity score for a node
+        function calculateSimilarityScore(nodeName, categoryName) {
+            const heat = getCategoryHeat(categoryName);
+
+            // Convert heat (1.0-3.0) to similarity score (0.0-1.0)
+            let similarity;
+
+            if (searchMatches.has(nodeName)) {
+                // Search matches get high scores
+                similarity = 0.82 + Math.random() * 0.13;
+            } else if (heat > 1.0) {
+                // Hot nodes: map heat 1.0-3.0 to similarity 0.45-0.95
+                similarity = 0.45 + ((heat - 1.0) / 2.0) * 0.50;
+                // Add small random variation for realism
+                similarity += (Math.random() * 0.08 - 0.04);
+            } else {
+                // Cool nodes: low similarity
+                similarity = 0.15 + Math.random() * 0.25;
+            }
+
+            return Math.max(0, Math.min(1, similarity));
+        }
+
+        // Calculate connection count for a node (for search ranking)
+        function getNodeConnectionCount(nodeName, categoryName) {
+            let count = 0;
+
+            // Categories have the most connections (all their sub-concepts)
+            if (knowledgeGraph[nodeName]) {
+                const subConcepts = knowledgeGraph[nodeName].subConcepts;
+                count += Object.keys(subConcepts).length;
+                // Add detail connections
+                Object.values(subConcepts).forEach(subConcept => {
+                    count += (subConcept.details || []).length;
+                });
+            } else {
+                // Sub-concepts: count their details
+                for (const cat in knowledgeGraph) {
+                    if (knowledgeGraph[cat].subConcepts[nodeName]) {
+                        count += (knowledgeGraph[cat].subConcepts[nodeName].details || []).length;
+                        break;
+                    }
+                }
+            }
+
+            return count;
+        }
+
+        // Search function - returns top N matches ranked by connection count
+        function searchNodes(query, maxResults = 5) {
+            if (!query || query.length === 0) {
+                return [];
+            }
+
+            const matches = [];
+            const lowerQuery = query.toLowerCase();
+
+            // Search categories
+            Object.keys(knowledgeGraph).forEach(catName => {
+                if (catName.toLowerCase().includes(lowerQuery)) {
+                    matches.push({
+                        label: catName,
+                        category: catName,
+                        type: 'category',
+                        connectionCount: getNodeConnectionCount(catName, catName)
+                    });
+                }
+
+                // Search sub-concepts
+                Object.keys(knowledgeGraph[catName].subConcepts).forEach(subName => {
+                    if (subName.toLowerCase().includes(lowerQuery)) {
+                        matches.push({
+                            label: subName,
+                            category: catName,
+                            type: 'subConcept',
+                            connectionCount: getNodeConnectionCount(subName, catName)
+                        });
+                    }
+
+                    // Search details
+                    (knowledgeGraph[catName].subConcepts[subName].details || []).forEach(detailName => {
+                        if (detailName.toLowerCase().includes(lowerQuery)) {
+                            matches.push({
+                                label: detailName,
+                                category: catName,
+                                type: 'detail',
+                                connectionCount: 1 // Details have minimal connections
+                            });
+                        }
+                    });
+                });
+            });
+
+            // Sort by connection count (descending), then alphabetically
+            matches.sort((a, b) => {
+                if (b.connectionCount !== a.connectionCount) {
+                    return b.connectionCount - a.connectionCount;
+                }
+                return a.label.localeCompare(b.label);
+            });
+
+            // Return top N results
+            return matches.slice(0, maxResults);
+        }
+
+        // Set up conversation scenario dropdown
+        const scenarioDropdown = document.getElementById('conversationScenario');
+        const scenarioInfo = document.getElementById('scenarioInfo');
+
+        scenarioDropdown.addEventListener('change', (e) => {
+            const scenarioKey = e.target.value;
+            currentScenario = scenarioKey ? conversationScenarios[scenarioKey] : null;
+
+            // Update info text
+            if (currentScenario) {
+                scenarioInfo.textContent = currentScenario.description;
+            } else {
+                scenarioInfo.textContent = "Select a context to see which concept vectors have high similarity scores and \"activate\"";
+            }
+        });
+
+        // Set up search box
+        const searchBox = document.getElementById('searchBox');
+        const searchInfo = document.getElementById('searchInfo');
+
+        searchBox.addEventListener('input', (e) => {
+            searchQuery = e.target.value.trim();
+
+            if (searchQuery.length === 0) {
+                searchMatches.clear();
+                searchInfo.textContent = "Enter a search query to see similarity matching in action";
+            } else {
+                const results = searchNodes(searchQuery, 5);
+                searchMatches.clear();
+                results.forEach(match => searchMatches.add(match.label));
+
+                if (results.length > 0) {
+                    const resultText = results.map(r => r.label).join(', ');
+                    searchInfo.textContent = `High similarity matches: ${resultText}`;
+                } else {
+                    searchInfo.textContent = "No matching vectors found";
+                }
+            }
+        });
+
+        // Check if a category is related to selected node
+        function isRelatedToSelected(categoryName) {
+            if (!selectedNode || !selectedNode.isParent) return false;
+
+            const selectedCategory = selectedNode.category;
+            if (categoryName === selectedCategory) return true;
+
+            const related = relatedCategories[selectedCategory] || [];
+            return related.includes(categoryName);
+        }
+
+        // Helper function to get "heat" for a category
+        function getCategoryHeat(categoryName) {
+            // Selection highlighting takes highest priority
+            if (selectedNode && selectedNode.isParent && zoomLevel === 0) {
+                if (isRelatedToSelected(categoryName)) {
+                    return 3.0; // Highlight selected and related
+                } else {
+                    return 0.3; // Dim others
+                }
+            }
+
+            // Isolation takes next priority
+            if (isolatedCategory) {
+                return isolatedCategory === categoryName ? 3.0 : 0.3;
+            }
+
+            // Scenario activation
+            if (!currentScenario || !currentScenario.activeCategories) {
+                return 1.0; // Normal state
+            }
+            return currentScenario.activeCategories[categoryName] || 1.0;
+        }
+
+        // 3D rotation functions
+        function rotateY(x, y, z, angle) {
+            const cos = Math.cos(angle);
+            const sin = Math.sin(angle);
+            return {
+                x: x * cos + z * sin,
+                y: y,
+                z: -x * sin + z * cos
+            };
+        }
+
+        function rotateX(x, y, z, angle) {
+            const cos = Math.cos(angle);
+            const sin = Math.sin(angle);
+            return {
+                x: x,
+                y: y * cos - z * sin,
+                z: y * sin + z * cos
+            };
+        }
+
+        function rotate3D(x, y, z, angleX, angleY) {
+            let result = rotateY(x, y, z, angleY);
+            result = rotateX(result.x, result.y, result.z, angleX);
+            return result;
+        }
+
+        // Generate nodes for current zoom level
+        function generateNodes() {
+            nodes = [];
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+
+            if (zoomLevel === 0) {
+                // Level 0: Main categories
+                const categoryNames = Object.keys(knowledgeGraph);
+                const categoryNodes = [];
+
+                // Use Fibonacci sphere for even distribution
+                categoryNames.forEach((name, i) => {
+                    const goldenRatio = (1 + Math.sqrt(5)) / 2;
+                    const angleIncrement = Math.PI * 2 * goldenRatio;
+                    const theta = angleIncrement * i;
+                    const phi = Math.acos(1 - 2 * (i + 0.5) / categoryNames.length);
+
+                    const radius = 200;
+                    const x = radius * Math.sin(phi) * Math.cos(theta);
+                    const y = radius * Math.sin(phi) * Math.sin(theta);
+                    const z = radius * Math.cos(phi);
+
+                    const catNode = {
+                        label: name,
+                        category: name,
+                        color: knowledgeGraph[name].color,
+                        x: centerX + x,
+                        y: centerY + y,
+                        z: z,
+                        vx: 0,
+                        vy: 0,
+                        vz: 0,
+                        radius: 15,
+                        clickable: true,
+                        isParent: true,
+                        showLabel: true,
+                        connections: []
+                    };
+                    nodes.push(catNode);
+                    categoryNodes.push(catNode);
+                });
+
+                // Add sub-concept nodes around parent categories (revealed on zoom)
+                categoryNodes.forEach((parentNode) => {
+                    const subConcepts = Object.keys(knowledgeGraph[parentNode.category].subConcepts);
+
+                    subConcepts.forEach((subConceptName, i) => {
+                        // Distribute evenly around parent in 3D
+                        const goldenRatio = (1 + Math.sqrt(5)) / 2;
+                        const angleIncrement = Math.PI * 2 * goldenRatio;
+                        const theta = angleIncrement * i;
+                        const phi = Math.acos(1 - 2 * (i + 0.5) / subConcepts.length);
+
+                        const clusterRadius = 45; // Distance from parent
+                        const offsetX = clusterRadius * Math.sin(phi) * Math.cos(theta);
+                        const offsetY = clusterRadius * Math.sin(phi) * Math.sin(theta);
+                        const offsetZ = clusterRadius * Math.cos(phi);
+
+                        const subConceptNode = {
+                            label: subConceptName,
+                            category: parentNode.category,
+                            color: parentNode.color,
+                            x: parentNode.x + offsetX,
+                            y: parentNode.y + offsetY,
+                            z: parentNode.z + offsetZ,
+                            vx: 0,
+                            vy: 0,
+                            vz: 0,
+                            radius: 7,
+                            isSubConcept: true,
+                            clickable: false,
+                            showLabelOnZoom: true, // Label appears based on camera zoom
+                            parentNode: parentNode
+                        };
+
+                        nodes.push(subConceptNode);
+                        parentNode.connections.push(subConceptNode);
+                    });
+                });
+
+                // Add density nodes clustered around parent categories
+                const densityPerCategory = 8;
+                categoryNodes.forEach((parentNode) => {
+                    for (let i = 0; i < densityPerCategory; i++) {
+                        const isClose = Math.random() < 0.7;
+                        const clusterRadius = isClose ? 25 + Math.random() * 35 : 70 + Math.random() * 70;
+
+                        const theta = Math.random() * Math.PI * 2;
+                        const phi = Math.acos(2 * Math.random() - 1);
+
+                        const offsetX = clusterRadius * Math.sin(phi) * Math.cos(theta);
+                        const offsetY = clusterRadius * Math.sin(phi) * Math.sin(theta);
+                        const offsetZ = clusterRadius * Math.cos(phi);
+
+                        const densityNode = {
+                            label: '',
+                            category: parentNode.category,
+                            color: parentNode.color,
+                            x: parentNode.x + offsetX,
+                            y: parentNode.y + offsetY,
+                            z: parentNode.z + offsetZ,
+                            vx: 0,
+                            vy: 0,
+                            vz: 0,
+                            radius: 5,
+                            isDense: true,
+                            clickable: false,
+                            parentNode: parentNode
+                        };
+
+                        nodes.push(densityNode);
+                        parentNode.connections.push(densityNode);
+                    }
+                });
+
+                // Add additional volumetric fill
+                for (let i = 0; i < 50; i++) {
+                    const r = Math.cbrt(Math.random()) * 180;
+                    const theta = Math.random() * Math.PI * 2;
+                    const phi = Math.acos(2 * Math.random() - 1);
+
+                    const x = r * Math.sin(phi) * Math.cos(theta);
+                    const y = r * Math.sin(phi) * Math.sin(theta);
+                    const z = r * Math.cos(phi);
+
+                    const catIndex = Math.floor(Math.random() * categoryNodes.length);
+                    const parentNode = categoryNodes[catIndex];
+
+                    nodes.push({
+                        label: '',
+                        category: parentNode.category,
+                        color: parentNode.color,
+                        x: centerX + x,
+                        y: centerY + y,
+                        z: z,
+                        vx: 0,
+                        vy: 0,
+                        vz: 0,
+                        radius: 4,
+                        isDense: true,
+                        clickable: false
+                    });
+                }
+
+            } else if (zoomLevel === 1) {
+                // Level 1: Sub-concepts within a category + related concepts from other categories
+                const categoryName = zoomPath[0];
+                const subConcepts = Object.keys(knowledgeGraph[categoryName].subConcepts);
+
+                const relatedCats = relatedCategories[categoryName] || [];
+
+                // Add main category sub-concepts (larger, primary)
+                subConcepts.forEach((name, i) => {
+                    const goldenRatio = (1 + Math.sqrt(5)) / 2;
+                    const angleIncrement = Math.PI * 2 * goldenRatio;
+                    const theta = angleIncrement * i;
+                    const phi = Math.acos(1 - 2 * (i + 0.5) / subConcepts.length);
+
+                    const radius = 180;
+                    const x = radius * Math.sin(phi) * Math.cos(theta);
+                    const y = radius * Math.sin(phi) * Math.sin(theta);
+                    const z = radius * Math.cos(phi);
+
+                    nodes.push({
+                        label: name,
+                        category: categoryName,
+                        color: knowledgeGraph[categoryName].color,
+                        x: centerX + x,
+                        y: centerY + y,
+                        z: z,
+                        vx: 0,
+                        vy: 0,
+                        vz: 0,
+                        radius: 12,
+                        clickable: true,
+                        showLabel: true,
+                        isPrimary: true
+                    });
+                });
+
+                // Add related concepts from other categories
+                let relatedConceptCount = 0;
+                const maxRelatedConcepts = 8;
+
+                relatedCats.forEach(relatedCat => {
+                    const relatedSubConcepts = Object.keys(knowledgeGraph[relatedCat].subConcepts);
+                    const numToTake = Math.min(3, relatedSubConcepts.length);
+
+                    for (let i = 0; i < numToTake && relatedConceptCount < maxRelatedConcepts; i++) {
+                        const name = relatedSubConcepts[i];
+
+                        const theta = Math.random() * Math.PI * 2;
+                        const phi = Math.acos(2 * Math.random() - 1);
+                        const radius = 220 + Math.random() * 40;
+
+                        const x = radius * Math.sin(phi) * Math.cos(theta);
+                        const y = radius * Math.sin(phi) * Math.sin(theta);
+                        const z = radius * Math.cos(phi);
+
+                        nodes.push({
+                            label: name,
+                            category: relatedCat,
+                            color: knowledgeGraph[relatedCat].color,
+                            x: centerX + x,
+                            y: centerY + y,
+                            z: z,
+                            vx: 0,
+                            vy: 0,
+                            vz: 0,
+                            radius: 8,
+                            clickable: false,
+                            showLabel: true,
+                            isRelated: true
+                        });
+
+                        relatedConceptCount++;
+                    }
+                });
+
+                // Density nodes
+                for (let i = 0; i < 40; i++) {
+                    const r = Math.random() * 150;
+                    const theta = Math.random() * Math.PI * 2;
+                    const phi = Math.acos(2 * Math.random() - 1);
+
+                    const x = r * Math.sin(phi) * Math.cos(theta);
+                    const y = r * Math.sin(phi) * Math.sin(theta);
+                    const z = r * Math.cos(phi);
+
+                    nodes.push({
+                        label: '',
+                        category: categoryName,
+                        color: knowledgeGraph[categoryName].color,
+                        x: centerX + x,
+                        y: centerY + y,
+                        z: z,
+                        vx: 0,
+                        vy: 0,
+                        vz: 0,
+                        radius: 4,
+                        isDense: true,
+                        clickable: false
+                    });
+                }
+
+            } else if (zoomLevel === 2) {
+                // Level 2: Details within a sub-concept
+                const categoryName = zoomPath[0];
+                const subConceptName = zoomPath[1];
+                const details = knowledgeGraph[categoryName].subConcepts[subConceptName].details;
+
+                details.forEach((name, i) => {
+                    const angle = (i / details.length) * Math.PI * 2;
+                    const radius = 150;
+                    const x = Math.cos(angle) * radius;
+                    const y = Math.sin(angle) * radius;
+
+                    nodes.push({
+                        label: name,
+                        category: categoryName,
+                        color: knowledgeGraph[categoryName].color,
+                        x: centerX + x,
+                        y: centerY + y,
+                        z: 0,
+                        vx: 0,
+                        vy: 0,
+                        vz: 0,
+                        radius: 10,
+                        clickable: false,
+                        showLabel: true
+                    });
+                });
+
+                // Lighter density
+                for (let i = 0; i < 25; i++) {
+                    const r = Math.random() * 120;
+                    const theta = Math.random() * Math.PI * 2;
+                    const phi = Math.acos(2 * Math.random() - 1);
+
+                    const x = r * Math.sin(phi) * Math.cos(theta);
+                    const y = r * Math.sin(phi) * Math.sin(theta);
+                    const z = r * Math.cos(phi);
+
+                    nodes.push({
+                        label: '',
+                        category: categoryName,
+                        color: knowledgeGraph[categoryName].color,
+                        x: centerX + x,
+                        y: centerY + y,
+                        z: z,
+                        vx: 0,
+                        vy: 0,
+                        vz: 0,
+                        radius: 3,
+                        isDense: true,
+                        clickable: false
+                    });
+                }
+            }
+        }
+
+        // Update breadcrumb display
+        function updateBreadcrumb() {
+            if (zoomLevel === 0 && !isolatedCategory) {
+                breadcrumb.style.display = 'none';
+            } else {
+                breadcrumb.style.display = 'block';
+                if (isolatedCategory && zoomLevel === 0) {
+                    breadcrumbPath.textContent = `Isolated: ${isolatedCategory}`;
+                    backButton.textContent = '✕ Clear Filter';
+                } else {
+                    breadcrumbPath.textContent = zoomPath.join(' > ');
+                    backButton.textContent = '← Back';
+                }
+            }
+        }
+
+        // Zoom in to a node
+        function zoomIn(node) {
+            if (!node.clickable) return;
+
+            // Clear isolation and selection when zooming in
+            isolatedCategory = null;
+            selectedNode = null;
+
+            zoomPath.push(node.label);
+            zoomLevel++;
+
+            canvas.style.opacity = '0';
+            canvas.style.transition = 'opacity 0.3s';
+
+            setTimeout(() => {
+                generateNodes();
+                updateBreadcrumb();
+                canvas.style.opacity = '1';
+            }, 300);
+        }
+
+        // Zoom out
+        function zoomOut() {
+            if (zoomLevel === 0) return;
+
+            zoomPath.pop();
+            zoomLevel--;
+
+            canvas.style.opacity = '0';
+            canvas.style.transition = 'opacity 0.3s';
+
+            setTimeout(() => {
+                generateNodes();
+                updateBreadcrumb();
+                canvas.style.opacity = '1';
+            }, 300);
+        }
+
+        // Draw
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+
+            // Apply rotation, camera zoom, and sort by depth
+            const displayNodes = nodes.map(node => {
+                const relX = node.x - centerX;
+                const relY = node.y - centerY;
+                const relZ = node.z || 0;
+                const rotated = rotate3D(relX, relY, relZ, rotationX, rotationY);
+
+                return {
+                    ...node,
+                    displayX: centerX + rotated.x * cameraZoom,
+                    displayY: centerY + rotated.y * cameraZoom,
+                    displayZ: rotated.z
+                };
+            }).sort((a, b) => a.displayZ - b.displayZ);
+
+            const zoomConnectionMultiplier = Math.min(1.8, 0.5 + (cameraZoom - 1) * 0.8);
+            const zoomLineThickness = Math.max(0.6, Math.min(1.5, cameraZoom * 0.8));
+
+            // Draw connection lines
+            if (zoomLevel === 0) {
+                displayNodes.forEach(node => {
+                    if (node.isParent && node.connections) {
+                        node.connections.forEach(connectedNode => {
+                            const connDisplay = displayNodes.find(dn => dn === connectedNode ||
+                                (dn.x === connectedNode.x && dn.y === connectedNode.y));
+
+                            if (connDisplay) {
+                                const avgZ = (node.displayZ + connDisplay.displayZ) / 2;
+                                const depthFactor = (avgZ + 250) / 500;
+                                const baseOpacity = 0.2 + (0.12 * depthFactor);
+                                const opacity = baseOpacity * zoomConnectionMultiplier;
+
+                                ctx.beginPath();
+                                ctx.moveTo(node.displayX, node.displayY);
+                                ctx.lineTo(connDisplay.displayX, connDisplay.displayY);
+
+                                const r = parseInt(node.color.slice(1, 3), 16);
+                                const g = parseInt(node.color.slice(3, 5), 16);
+                                const b = parseInt(node.color.slice(5, 7), 16);
+
+                                ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${opacity})`;
+                                ctx.lineWidth = 1 * zoomLineThickness;
+                                ctx.stroke();
+                            }
+                        });
+                    }
+                });
+
+                // Cross-connections between parent nodes
+                const parentNodes = displayNodes.filter(n => n.isParent);
+                parentNodes.forEach((node1, i) => {
+                    parentNodes.forEach((node2, j) => {
+                        if (i < j) {
+                            const dx = node1.x - node2.x;
+                            const dy = node1.y - node2.y;
+                            const dz = (node1.z || 0) - (node2.z || 0);
+                            const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+                            if (dist < 400) {
+                                const avgZ = (node1.displayZ + node2.displayZ) / 2;
+                                const depthFactor = (avgZ + 250) / 500;
+                                const baseOpacity = 0.08 + (0.08 * depthFactor);
+                                const opacity = baseOpacity * zoomConnectionMultiplier;
+
+                                ctx.beginPath();
+                                ctx.moveTo(node1.displayX, node1.displayY);
+                                ctx.lineTo(node2.displayX, node2.displayY);
+                                ctx.strokeStyle = `rgba(200, 200, 220, ${opacity})`;
+                                ctx.lineWidth = 1.5 * zoomLineThickness;
+                                ctx.stroke();
+                            }
+                        }
+                    });
+                });
+
+                // Connections between density nodes
+                displayNodes.forEach((node1, i) => {
+                    if (node1.isDense && node1.parentNode) {
+                        displayNodes.forEach((node2, j) => {
+                            if (i < j && node2.isDense && node2.parentNode === node1.parentNode) {
+                                const dx = node1.x - node2.x;
+                                const dy = node1.y - node2.y;
+                                const dz = (node1.z || 0) - (node2.z || 0);
+                                const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+                                if (dist < 80) {
+                                    const avgZ = (node1.displayZ + node2.displayZ) / 2;
+                                    const depthFactor = (avgZ + 250) / 500;
+                                    const baseOpacity = 0.08 + (0.06 * depthFactor);
+                                    const opacity = baseOpacity * zoomConnectionMultiplier;
+
+                                    ctx.beginPath();
+                                    ctx.moveTo(node1.displayX, node1.displayY);
+                                    ctx.lineTo(node2.displayX, node2.displayY);
+
+                                    const r = parseInt(node1.color.slice(1, 3), 16);
+                                    const g = parseInt(node1.color.slice(3, 5), 16);
+                                    const b = parseInt(node1.color.slice(5, 7), 16);
+
+                                    ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${opacity})`;
+                                    ctx.lineWidth = 0.75 * zoomLineThickness;
+                                    ctx.stroke();
+                                }
+                            }
+                        });
+                    }
+                });
+            }
+
+            // Level 1 connections
+            if (zoomLevel === 1) {
+                const primaryNodes = displayNodes.filter(n => n.isPrimary);
+                primaryNodes.forEach((node1, i) => {
+                    primaryNodes.forEach((node2, j) => {
+                        if (i < j) {
+                            const dx = node1.x - node2.x;
+                            const dy = node1.y - node2.y;
+                            const dz = (node1.z || 0) - (node2.z || 0);
+                            const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+                            if (dist < 300) {
+                                const avgZ = (node1.displayZ + node2.displayZ) / 2;
+                                const depthFactor = (avgZ + 250) / 500;
+                                const baseOpacity = 0.12 + (0.09 * depthFactor);
+                                const opacity = baseOpacity * zoomConnectionMultiplier;
+
+                                ctx.beginPath();
+                                ctx.moveTo(node1.displayX, node1.displayY);
+                                ctx.lineTo(node2.displayX, node2.displayY);
+
+                                const r = parseInt(node1.color.slice(1, 3), 16);
+                                const g = parseInt(node1.color.slice(3, 5), 16);
+                                const b = parseInt(node1.color.slice(5, 7), 16);
+
+                                ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${opacity})`;
+                                ctx.lineWidth = 1.2 * zoomLineThickness;
+                                ctx.stroke();
+                            }
+                        }
+                    });
+                });
+
+                const relatedNodes = displayNodes.filter(n => n.isRelated);
+                primaryNodes.forEach((primaryNode, i) => {
+                    relatedNodes.forEach((relatedNode, j) => {
+                        const dx = primaryNode.x - relatedNode.x;
+                        const dy = primaryNode.y - relatedNode.y;
+                        const dz = (primaryNode.z || 0) - (relatedNode.z || 0);
+                        const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+                        if (dist < 250 && (i + j) % 3 === 0) {
+                            const avgZ = (primaryNode.displayZ + relatedNode.displayZ) / 2;
+                            const depthFactor = (avgZ + 250) / 500;
+                            const baseOpacity = 0.07 + (0.05 * depthFactor);
+                            const opacity = baseOpacity * zoomConnectionMultiplier;
+
+                            ctx.beginPath();
+                            ctx.moveTo(primaryNode.displayX, primaryNode.displayY);
+                            ctx.lineTo(relatedNode.displayX, relatedNode.displayY);
+                            ctx.strokeStyle = `rgba(150, 150, 200, ${opacity})`;
+                            ctx.lineWidth = 0.8 * zoomLineThickness;
+                            ctx.stroke();
+                        }
+                    });
+                });
+            }
+
+            // Level 2 connections
+            if (zoomLevel === 2) {
+                const labeledNodes = displayNodes.filter(n => n.label && !n.isDense);
+                labeledNodes.forEach((node1, i) => {
+                    labeledNodes.forEach((node2, j) => {
+                        if (i < j) {
+                            const dx = node1.x - node2.x;
+                            const dy = node1.y - node2.y;
+                            const dz = (node1.z || 0) - (node2.z || 0);
+                            const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+                            if (dist < 250) {
+                                const avgZ = (node1.displayZ + node2.displayZ) / 2;
+                                const depthFactor = (avgZ + 250) / 500;
+                                const baseOpacity = 0.12 + (0.09 * depthFactor);
+                                const opacity = baseOpacity * zoomConnectionMultiplier;
+
+                                ctx.beginPath();
+                                ctx.moveTo(node1.displayX, node1.displayY);
+                                ctx.lineTo(node2.displayX, node2.displayY);
+
+                                const r = parseInt(node1.color.slice(1, 3), 16);
+                                const g = parseInt(node1.color.slice(3, 5), 16);
+                                const b = parseInt(node1.color.slice(5, 7), 16);
+
+                                ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${opacity})`;
+                                ctx.lineWidth = 1 * zoomLineThickness;
+                                ctx.stroke();
+                            }
+                        }
+                    });
+                });
+            }
+
+            // Draw nodes
+            displayNodes.forEach(node => {
+                const z = node.displayZ;
+                const depthFactor = (z + 250) / 500;
+                const scale = 0.5 + 0.5 * depthFactor;
+
+                const isSearchMatch = searchMatches.has(node.label);
+                const searchActive = searchMatches.size > 0;
+
+                const heat = getCategoryHeat(node.category);
+                const isHot = heat > 1.0;
+                const scenarioActive = currentScenario !== null || selectedNode !== null;
+
+                let alpha;
+                if (node.isDense) {
+                    alpha = 0.5 + 0.3 * depthFactor;
+                    if (scenarioActive && !isHot) {
+                        alpha *= 0.2; // Dimmer
+                    }
+                } else if (node.isRelated) {
+                    alpha = 0.6 + 0.2 * depthFactor;
+                    if (scenarioActive && !isHot) {
+                        alpha *= 0.25; // Dimmer
+                    }
+                } else {
+                    alpha = 0.9 + 0.1 * depthFactor;
+                    if (scenarioActive && !isHot) {
+                        alpha *= 0.2; // Dimmer
+                    }
+                }
+
+                if (searchActive) {
+                    if (isSearchMatch) {
+                        alpha = Math.min(1.0, alpha * 1.3);
+                    } else {
+                        alpha *= 0.2; // Dimmer
+                    }
+                }
+
+                const heatScale = isHot ? 1 + ((heat - 1) * 0.3) : 1;
+                const radius = node.radius * scale * heatScale * cameraZoom;
+
+                let r = parseInt(node.color.slice(1, 3), 16);
+                let g = parseInt(node.color.slice(3, 5), 16);
+                let b = parseInt(node.color.slice(5, 7), 16);
+
+                if (isHot) {
+                    // Keep original colors as-is
+                } else if (scenarioActive) {
+                    // Dim and desaturate non-hot nodes more
+                    const grey = (r + g + b) / 3;
+                    const desaturationAmount = 0.75; // More desaturation
+                    r = r + (grey - r) * desaturationAmount;
+                    g = g + (grey - g) * desaturationAmount;
+                    b = b + (grey - b) * desaturationAmount;
+                    // Also dim them
+                    r *= 0.5;
+                    g *= 0.5;
+                    b *= 0.5;
+                }
+
+                ctx.beginPath();
+                ctx.arc(node.displayX, node.displayY, radius, 0, Math.PI * 2);
+
+                const gradient = ctx.createRadialGradient(
+                    node.displayX - radius * 0.3,
+                    node.displayY - radius * 0.3,
+                    radius * 0.1,
+                    node.displayX,
+                    node.displayY,
+                    radius * 1.2
+                );
+                const lightR = Math.min(255, r + 40);
+                const lightG = Math.min(255, g + 40);
+                const lightB = Math.min(255, b + 40);
+
+                gradient.addColorStop(0, `rgba(${lightR}, ${lightG}, ${lightB}, ${alpha})`);
+                gradient.addColorStop(1, `rgba(${r}, ${g}, ${b}, ${alpha})`);
+                ctx.fillStyle = gradient;
+                ctx.fill();
+
+                if (!node.isDense) {
+                    let glowIntensity, glowAlpha;
+                    if (isSearchMatch) {
+                        glowIntensity = 20 * scale;
+                        glowAlpha = 0.9;
+                        ctx.shadowBlur = glowIntensity;
+                        ctx.shadowColor = `rgba(52, 152, 219, ${glowAlpha})`;
+                        ctx.strokeStyle = `rgba(52, 152, 219, ${alpha * 0.8})`;
+                        ctx.lineWidth = 2.5 * scale;
+                        ctx.stroke();
+                    } else if (isHot) {
+                        // Stronger glow for hot nodes
+                        glowIntensity = 18 * scale * (1 + (heat - 1) * 0.6);
+                        glowAlpha = 0.7 + (heat - 1) * 0.2;
+                        ctx.shadowBlur = glowIntensity;
+                        ctx.shadowColor = `rgba(${r}, ${g}, ${b}, ${glowAlpha})`;
+                        ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.5})`;
+                        ctx.lineWidth = 2 * scale;
+                        ctx.stroke();
+                    } else if (scenarioActive) {
+                        // Minimal glow for dim nodes
+                        glowIntensity = 2 * scale;
+                        glowAlpha = 0.1;
+                        ctx.shadowBlur = glowIntensity;
+                        ctx.shadowColor = `rgba(${r}, ${g}, ${b}, ${glowAlpha})`;
+                        ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.3})`;
+                        ctx.lineWidth = 1 * scale;
+                        ctx.stroke();
+                    } else {
+                        glowIntensity = 12 * scale;
+                        glowAlpha = 0.6;
+                        ctx.shadowBlur = glowIntensity;
+                        ctx.shadowColor = `rgba(${r}, ${g}, ${b}, ${glowAlpha})`;
+                        ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.4})`;
+                        ctx.lineWidth = 1.5 * scale;
+                        ctx.stroke();
+                    }
+                }
+
+                ctx.shadowBlur = 0;
+            });
+
+            // Draw labels
+            displayNodes.forEach(node => {
+                let shouldShowLabel = false;
+                if (node.isParent) {
+                    shouldShowLabel = true;
+                } else if (node.showLabel) {
+                    shouldShowLabel = true;
+                } else if (node.showLabelOnZoom && cameraZoom >= 1.4) {
+                    shouldShowLabel = true;
+                }
+
+                if (shouldShowLabel && node.label) {
+                    const z = node.displayZ;
+                    const depthFactor = (z + 250) / 500;
+                    const scale = 0.5 + 0.5 * depthFactor;
+
+                    const isSearchMatch = searchMatches.has(node.label);
+                    const searchActive = searchMatches.size > 0;
+
+                    const heat = getCategoryHeat(node.category);
+                    const isHot = heat > 1.0;
+                    const scenarioActive = currentScenario !== null || selectedNode !== null;
+
+                    const heatScale = isHot ? 1 + ((heat - 1) * 0.3) : 1;
+                    const radius = node.radius * scale * heatScale;
+
+                    let alpha = 0.7 + (0.3 * depthFactor);
+                    if (scenarioActive && !isHot) {
+                        alpha *= 0.15; // Dimmer labels
+                    }
+
+                    if (node.showLabelOnZoom) {
+                        const zoomFadeStart = 1.4;
+                        const zoomFadeFull = 2.0;
+                        const zoomFade = Math.min(1, Math.max(0, (cameraZoom - zoomFadeStart) / (zoomFadeFull - zoomFadeStart)));
+                        alpha *= zoomFade;
+                    }
+
+                    if (searchActive) {
+                        if (isSearchMatch) {
+                            alpha = Math.min(1.0, alpha * 1.5);
+                        } else {
+                            alpha *= 0.15; // Dimmer labels
+                        }
+                    }
+
+                    let baseFontSize = 12;
+                    let fontStyle = 'normal';
+                    if (node.isRelated) {
+                        baseFontSize = 10;
+                        fontStyle = 'italic';
+                    } else if (node.isSubConcept) {
+                        baseFontSize = 10;
+                        fontStyle = 'normal';
+                    }
+                    const fontSize = baseFontSize * scale;
+                    ctx.font = `${fontStyle} ${fontSize}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+
+                    const textMetrics = ctx.measureText(node.label);
+                    const textWidth = textMetrics.width;
+                    const textHeight = fontSize * 1.2;
+                    const padding = (node.isRelated || node.isSubConcept) ? 4 * scale : 6 * scale;
+
+                    const labelY = node.displayY - radius - 18 * scale;
+
+                    let bgAlpha, bgColor, borderColor, borderWidth;
+
+                    if (isSearchMatch) {
+                        bgAlpha = alpha * 0.8;
+                        bgColor = `rgba(52, 152, 219, ${bgAlpha * 0.3})`;
+                        borderColor = `rgba(52, 152, 219, ${alpha * 0.9})`;
+                        borderWidth = 2;
+                    } else if (node.isRelated || node.isSubConcept) {
+                        bgAlpha = alpha * 0.5;
+                        bgColor = `rgba(0, 0, 0, ${bgAlpha})`;
+                        const r = parseInt(node.color.slice(1, 3), 16);
+                        const g = parseInt(node.color.slice(3, 5), 16);
+                        const b = parseInt(node.color.slice(5, 7), 16);
+                        borderColor = `rgba(${r}, ${g}, ${b}, ${alpha * 0.5})`;
+                        borderWidth = 1.5;
+                    } else {
+                        bgAlpha = alpha * 0.7;
+                        bgColor = `rgba(0, 0, 0, ${bgAlpha})`;
+                        borderColor = `rgba(255, 255, 255, ${alpha * 0.3})`;
+                        borderWidth = 1;
+                    }
+
+                    ctx.fillStyle = bgColor;
+                    ctx.fillRect(
+                        node.displayX - textWidth / 2 - padding,
+                        labelY - textHeight / 2 - padding / 2,
+                        textWidth + padding * 2,
+                        textHeight + padding
+                    );
+
+                    ctx.strokeStyle = borderColor;
+                    ctx.lineWidth = borderWidth;
+                    ctx.strokeRect(
+                        node.displayX - textWidth / 2 - padding,
+                        labelY - textHeight / 2 - padding / 2,
+                        textWidth + padding * 2,
+                        textHeight + padding
+                    );
+
+                    ctx.shadowBlur = 4;
+                    ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+                    ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+                    ctx.fillText(node.label, node.displayX, labelY);
+                    ctx.shadowBlur = 0;
+                }
+            });
+        }
+
+        // Mouse handling
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            if (isDraggingRotation) {
+                const deltaX = mouseX - lastMouseX;
+                const deltaY = mouseY - lastMouseY;
+                rotationY += deltaX * 0.005;
+                rotationX -= deltaY * 0.005;
+                autoRotate = false;
+                lastMouseX = mouseX;
+                lastMouseY = mouseY;
+                return;
+            }
+
+            // Find hovered node
+            hoveredNode = null;
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+
+            const displayNodesForHit = nodes.map(node => {
+                if (node.isDense) return null;
+
+                const relX = node.x - centerX;
+                const relY = node.y - centerY;
+                const relZ = node.z || 0;
+                const rotated = rotate3D(relX, relY, relZ, rotationX, rotationY);
+
+                return {
+                    original: node,
+                    displayX: centerX + rotated.x * cameraZoom,
+                    displayY: centerY + rotated.y * cameraZoom,
+                    displayZ: rotated.z
+                };
+            }).filter(n => n !== null);
+
+            displayNodesForHit.sort((a, b) => b.displayZ - a.displayZ);
+
+            for (const displayNode of displayNodesForHit) {
+                const node = displayNode.original;
+                const dx = mouseX - displayNode.displayX;
+                const dy = mouseY - displayNode.displayY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                const hitRadius = (node.radius + (node.clickable ? 10 : 5)) * cameraZoom;
+
+                if (dist < hitRadius) {
+                    hoveredNode = node;
+                    break;
+                }
+            }
+
+            // Update cursor
+            if (hoveredNode) {
+                canvas.style.cursor = hoveredNode.clickable ? 'pointer' : 'grab';
+            } else {
+                canvas.style.cursor = 'grab';
+            }
+        });
+
+        let mouseDownX = 0;
+        let mouseDownY = 0;
+        let clickedNode = null;
+
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            mouseDownX = e.clientX - rect.left;
+            mouseDownY = e.clientY - rect.top;
+            lastMouseX = mouseDownX;
+            lastMouseY = mouseDownY;
+
+            if (hoveredNode && hoveredNode.clickable) {
+                clickedNode = hoveredNode;
+            } else if (!hoveredNode) {
+                isDraggingRotation = true;
+                canvas.style.cursor = 'grabbing';
+            }
+        });
+
+        canvas.addEventListener('mouseup', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseUpX = e.clientX - rect.left;
+            const mouseUpY = e.clientY - rect.top;
+
+            const dragDist = Math.sqrt(
+                Math.pow(mouseUpX - mouseDownX, 2) +
+                Math.pow(mouseUpY - mouseDownY, 2)
+            );
+
+            const now = Date.now();
+            const timeSinceLastClick = now - lastClickTime;
+
+            // Only process click if the mouse didn't move more than 5 pixels
+            if (clickedNode && clickedNode.clickable && dragDist < 5) {
+                // Check for double-click
+                if (timeSinceLastClick < DOUBLE_CLICK_THRESHOLD && lastClickedNode === clickedNode) {
+                    // Double-click: zoom in
+                    if (zoomLevel === 0) {
+                        zoomIn(clickedNode);
+                    }
+                    lastClickTime = 0; // Reset
+                    lastClickedNode = null;
+                } else {
+                    // Single click behavior
+                    if (e.shiftKey && zoomLevel === 0 && clickedNode.isParent) {
+                        // Shift+click: isolate category
+                        if (isolatedCategory === clickedNode.category) {
+                            isolatedCategory = null;
+                        } else {
+                            isolatedCategory = clickedNode.category;
+                        }
+                        selectedNode = null; // Clear selection when isolating
+                        updateBreadcrumb();
+                    } else if (zoomLevel === 0 && clickedNode.isParent) {
+                        // Regular click at level 0: select/highlight
+                        if (selectedNode === clickedNode) {
+                            selectedNode = null; // Toggle off
+                        } else {
+                            selectedNode = clickedNode;
+                        }
+                    } else if (zoomLevel === 1) {
+                        // At level 1, double-click to zoom
+                        // Store for potential double-click
+                    }
+
+                    lastClickTime = now;
+                    lastClickedNode = clickedNode;
+                }
+            } else if (!isDraggingRotation && dragDist < 5) {
+                // Click outside nodes (anywhere in canvas): clear selection first, then isolation, then zoom out
+                if (selectedNode) {
+                    selectedNode = null;
+                } else if (isolatedCategory) {
+                    isolatedCategory = null;
+                    updateBreadcrumb();
+                } else if (zoomLevel > 0) {
+                    zoomOut();
+                }
+            }
+
+            clickedNode = null;
+            isDraggingRotation = false;
+            canvas.style.cursor = hoveredNode ? 'pointer' : 'grab';
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            isDraggingRotation = false;
+            hoveredNode = null;
+        });
+
+        // Mouse wheel for camera zoom
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+
+            const zoomSpeed = 0.001;
+            const delta = -e.deltaY * zoomSpeed;
+
+            cameraZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, cameraZoom + delta));
+        }, { passive: false });
+
+        // Back button
+        backButton.addEventListener('click', () => {
+            if (isolatedCategory) {
+                isolatedCategory = null;
+                updateBreadcrumb();
+            } else {
+                zoomOut();
+            }
+        });
+
+        // Animation loop
+        function animate() {
+            if (autoRotate) {
+                rotationY += 0.0015;
+                rotationX = Math.sin(rotationY * 0.5) * 0.15;
+            }
+            draw();
+            requestAnimationFrame(animate);
+        }
+
+        // Initialize
+        generateNodes();
+        updateBreadcrumb();
+        animate();
+    </script>
+</body>
+</html>
