@@ -1,0 +1,2021 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zoom Prototype - 3 Levels</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
+            background: #0a1929;
+            color: #ffffff;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        header {
+            background: rgba(0, 0, 0, 0.4);
+            padding: 2rem 3rem;
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 300;
+            margin-bottom: 0.5rem;
+            letter-spacing: 0.5px;
+        }
+
+        .subtitle {
+            font-size: 0.95rem;
+            opacity: 0.6;
+            font-weight: 300;
+        }
+
+        .canvas-container {
+            flex: 1;
+            position: relative;
+        }
+
+        canvas {
+            display: block;
+            cursor: grab;
+            touch-action: none;
+        }
+
+        canvas:active {
+            cursor: grabbing;
+        }
+
+        #breadcrumb {
+            position: absolute;
+            top: 19.5rem;
+            left: 3rem;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        #backButton {
+            background: rgba(52, 152, 219, 0.15);
+            backdrop-filter: blur(20px);
+            color: #5dade2;
+            border: 1px solid rgba(52, 152, 219, 0.3);
+            padding: 0.55rem 1.125rem;
+            border-radius: 8px;
+            font-size: 0.7rem;
+            font-weight: 400;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            transition: all 0.2s ease;
+        }
+
+        #backButton:hover {
+            background: rgba(52, 152, 219, 0.25);
+            border-color: rgba(52, 152, 219, 0.5);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(52, 152, 219, 0.15);
+        }
+
+        #breadcrumbPath {
+            display: inline-block;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.7rem;
+            font-weight: 300;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 0.55rem 1.125rem;
+            border-radius: 8px;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .info-box {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 1rem 1.25rem;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(20px);
+            pointer-events: none;
+            display: none;
+            max-width: 280px;
+            font-size: 0.9rem;
+            z-index: 1000;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+        }
+
+        .info-box .node-label {
+            font-weight: 500;
+            margin-bottom: 0.4rem;
+            font-size: 1rem;
+            color: rgba(255, 255, 255, 0.95);
+        }
+
+        .info-box .node-category {
+            font-size: 0.8rem;
+            opacity: 0.6;
+            font-weight: 300;
+        }
+
+        .fade {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .controls {
+            position: absolute;
+            top: 2.5rem;
+            left: 3rem;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 1.125rem;
+            border-radius: 10px;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            width: 240px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+            z-index: 50;
+        }
+
+        .control-label {
+            display: block;
+            font-size: 0.7rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            opacity: 0.9;
+        }
+
+        select, input[type="text"] {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 0.55rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        select {
+            cursor: pointer;
+        }
+
+        input[type="text"] {
+            transition: border-color 0.2s, background 0.2s;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: rgba(52, 152, 219, 0.5);
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        input[type="text"]::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        select option {
+            background: #0a1929;
+            color: white;
+        }
+
+        .info-text {
+            margin-top: 0.75rem;
+            font-size: 0.65rem;
+            line-height: 1.4;
+            opacity: 0.7;
+        }
+
+        /* Mobile Responsive Styles */
+        @media (max-width: 768px) {
+            header {
+                padding: 1rem 1.5rem;
+            }
+
+            h1 {
+                font-size: 1.5rem;
+            }
+
+            .subtitle {
+                font-size: 0.75rem;
+            }
+
+            .controls {
+                top: 1.5rem;
+                left: 1rem;
+                width: 200px;
+                padding: 0.75rem;
+            }
+
+            #breadcrumb {
+                top: auto;
+                bottom: 1.5rem;
+                left: 1rem;
+                right: 1rem;
+                flex-direction: column;
+                gap: 0.5rem;
+                align-items: flex-start;
+            }
+
+            #backButton, #breadcrumbPath {
+                width: 100%;
+                text-align: center;
+            }
+
+            .control-label {
+                font-size: 0.6rem;
+                margin-bottom: 0.4rem;
+            }
+
+            select, input[type="text"] {
+                font-size: 0.65rem;
+                padding: 0.45rem;
+            }
+
+            .info-text {
+                font-size: 0.55rem;
+                margin-top: 0.5rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            header {
+                padding: 0.75rem 1rem;
+            }
+
+            h1 {
+                font-size: 1.2rem;
+            }
+
+            .subtitle {
+                font-size: 0.65rem;
+            }
+
+            .controls {
+                top: 1rem;
+                left: 0.5rem;
+                width: 180px;
+                padding: 0.65rem;
+            }
+
+            .control-label {
+                font-size: 0.55rem;
+            }
+
+            select, input[type="text"] {
+                font-size: 0.6rem;
+                padding: 0.4rem;
+            }
+
+            .info-text {
+                font-size: 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>AI Concept Space Visualizer</h1>
+            <p class="subtitle">Click/tap nodes to zoom • Shift+click to isolate • Scroll/pinch to zoom • Drag to rotate • Double-tap to reset</p>
+        </header>
+
+        <div class="canvas-container">
+            <canvas id="canvas"></canvas>
+
+            <div id="breadcrumb" style="display: none;">
+                <button id="backButton">← Back</button>
+                <div id="breadcrumbPath"></div>
+            </div>
+
+            <div class="controls">
+                <label class="control-label">Search Concepts</label>
+                <input type="text" id="searchBox" placeholder="Type to search..." />
+                <div class="info-text" id="searchInfo">
+                    Searches by name, highlights matching nodes
+                </div>
+
+                <div style="margin-top: 1.125rem; padding-top: 1.125rem; border-top: 1px solid rgba(255, 255, 255, 0.1);">
+                    <label class="control-label">Conversation Context</label>
+                    <select id="conversationScenario">
+                        <option value="">None - Normal View</option>
+                        <option value="tax-audit">Tax Audit Discussion</option>
+                        <option value="client-issue">Client Relationship Issue</option>
+                        <option value="automation">Process Automation Project</option>
+                        <option value="compliance">Compliance Deadline Crunch</option>
+                        <option value="ethics">Ethical Dilemma</option>
+                        <option value="training">New Staff Training</option>
+                    </select>
+                    <div class="info-text" id="scenarioInfo">
+                        Select a conversation to see which concepts become "active" and gain prominence in the space.
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-box" id="infoBox">
+                <div class="node-label"></div>
+                <div class="node-category"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Full hierarchical knowledge graph - 10 categories, ~70 sub-concepts, ~300 details
+        const knowledgeGraph = {
+            'Accounting': {
+                color: '#e74c3c',
+                subConcepts: {
+                    'Debits & Credits': {
+                        details: ['Double-Entry System', 'T-Accounts', 'Normal Balances', 'Journal Entries']
+                    },
+                    'Financial Statements': {
+                        details: ['Balance Sheet', 'Income Statement', 'Cash Flow Statement', 'Statement of Changes in Equity']
+                    },
+                    'Trial Balance': {
+                        details: ['Adjusted Trial Balance', 'Unadjusted Trial Balance', 'Post-Closing Trial Balance']
+                    },
+                    'Chart of Accounts': {
+                        details: ['Asset Accounts', 'Liability Accounts', 'Equity Accounts', 'Revenue Accounts', 'Expense Accounts']
+                    },
+                    'General Ledger': {
+                        details: ['Ledger Accounts', 'Posting Process', 'Account History', 'Audit Trail']
+                    },
+                    'Account Reconciliation': {
+                        details: ['Bank Reconciliation', 'Intercompany Reconciliation', 'Variance Analysis']
+                    },
+                    'Period Close': {
+                        details: ['Month-End Close', 'Quarter-End Close', 'Year-End Close', 'Closing Entries']
+                    }
+                }
+            },
+            
+            'Tax & Compliance': {
+                color: '#e67e22',
+                subConcepts: {
+                    'Tax Planning': {
+                        details: ['Strategic Planning', 'Entity Selection', 'Timing Strategies', 'Tax Credits']
+                    },
+                    'Regulations': {
+                        details: ['Federal Tax Code', 'State Regulations', 'Industry-Specific Rules', 'Compliance Deadlines']
+                    },
+                    'Deadlines': {
+                        details: ['Filing Deadlines', 'Extension Requests', 'Payment Deadlines', 'Penalty Avoidance']
+                    },
+                    'Tax Returns': {
+                        details: ['Individual Returns', 'Corporate Returns', 'Partnership Returns', 'Amended Returns']
+                    },
+                    'Tax Research': {
+                        details: ['Case Law', 'Revenue Rulings', 'Private Letter Rulings', 'Tax Court Decisions']
+                    },
+                    'Tax Credits & Deductions': {
+                        details: ['Business Credits', 'Individual Deductions', 'Depreciation', 'Loss Carryforwards']
+                    }
+                }
+            },
+            
+            'Audit & Risk': {
+                color: '#f39c12',
+                subConcepts: {
+                    'Audit Trail': {
+                        details: ['Source Documents', 'Transaction History', 'Approval Chains', 'Document Retention']
+                    },
+                    'Risk Assessment': {
+                        details: ['Materiality Analysis', 'Inherent Risk', 'Control Risk', 'Detection Risk']
+                    },
+                    'Evidence': {
+                        details: ['Sufficient Evidence', 'Appropriate Evidence', 'Physical Inspection', 'Third-Party Confirmation']
+                    },
+                    'Internal Controls': {
+                        details: ['Segregation of Duties', 'Authorization Controls', 'Reconciliation Controls', 'IT Controls']
+                    },
+                    'Audit Procedures': {
+                        details: ['Substantive Testing', 'Test of Controls', 'Analytical Procedures', 'Sampling']
+                    },
+                    'Fraud Detection': {
+                        details: ['Red Flags', 'Fraud Triangle', 'Investigative Procedures', 'Forensic Analysis']
+                    },
+                    'Audit Reports': {
+                        details: ['Unqualified Opinion', 'Qualified Opinion', 'Adverse Opinion', 'Disclaimer']
+                    }
+                }
+            },
+            
+            'Financial Analysis': {
+                color: '#2ecc71',
+                subConcepts: {
+                    'Financial Ratios': {
+                        details: ['Liquidity Ratios', 'Profitability Ratios', 'Leverage Ratios', 'Efficiency Ratios']
+                    },
+                    'Trends': {
+                        details: ['Horizontal Analysis', 'Vertical Analysis', 'Trend Analysis', 'Common Size Statements']
+                    },
+                    'Forecasting': {
+                        details: ['Budget Projections', 'Cash Flow Forecasting', 'Scenario Analysis', 'Sensitivity Analysis']
+                    },
+                    'Benchmarking': {
+                        details: ['Industry Comparisons', 'Peer Analysis', 'Best Practices', 'Performance Metrics']
+                    },
+                    'Valuation': {
+                        details: ['DCF Analysis', 'Comparable Company Analysis', 'Precedent Transactions', 'Asset-Based Valuation']
+                    },
+                    'Financial Models': {
+                        details: ['Three-Statement Model', 'DCF Model', 'LBO Model', 'Scenario Planning']
+                    },
+                    'Cost Analysis': {
+                        details: ['Fixed vs Variable', 'Break-Even Analysis', 'Cost Allocation', 'Activity-Based Costing']
+                    }
+                }
+            },
+            
+            'Technology': {
+                color: '#3498db',
+                subConcepts: {
+                    'Automation': {
+                        details: ['Workflow Automation', 'Data Entry Automation', 'Report Generation', 'Process Optimization']
+                    },
+                    'Data Analysis': {
+                        details: ['Data Mining', 'Statistical Analysis', 'Predictive Analytics', 'Data Visualization']
+                    },
+                    'Documentation': {
+                        details: ['Digital Filing', 'Version Control', 'Knowledge Management', 'Collaborative Documents']
+                    },
+                    'Software Systems': {
+                        details: ['ERP Systems', 'Tax Software', 'Audit Software', 'Practice Management']
+                    },
+                    'AI & Machine Learning': {
+                        details: ['Natural Language Processing', 'Predictive Models', 'Anomaly Detection', 'Process Intelligence']
+                    },
+                    'Cybersecurity': {
+                        details: ['Data Protection', 'Access Controls', 'Encryption', 'Incident Response']
+                    },
+                    'Cloud Computing': {
+                        details: ['Cloud Storage', 'SaaS Applications', 'Collaboration Tools', 'Backup & Recovery']
+                    }
+                }
+            },
+            
+            'Communication': {
+                color: '#9b59b6',
+                subConcepts: {
+                    'Client Expectations': {
+                        details: ['Scope Definition', 'Timeline Communication', 'Fee Agreements', 'Service Level Agreements']
+                    },
+                    'Transparency': {
+                        details: ['Clear Communication', 'Proactive Updates', 'Honest Limitations', 'Realistic Timelines']
+                    },
+                    'Feedback': {
+                        details: ['Client Feedback', 'Peer Review', 'Performance Reviews', 'Continuous Improvement']
+                    },
+                    'Presentations': {
+                        details: ['Financial Reports', 'Board Presentations', 'Stakeholder Updates', 'Visual Communication']
+                    },
+                    'Written Communication': {
+                        details: ['Professional Emails', 'Memo Writing', 'Report Writing', 'Documentation']
+                    },
+                    'Active Listening': {
+                        details: ['Client Needs', 'Clarifying Questions', 'Empathetic Response', 'Note Taking']
+                    },
+                    'Difficult Conversations': {
+                        details: ['Delivering Bad News', 'Conflict Resolution', 'Expectation Management', 'Boundary Setting']
+                    }
+                }
+            },
+            
+            'Problem Solving': {
+                color: '#1abc9c',
+                subConcepts: {
+                    'Pattern Recognition': {
+                        details: ['Anomaly Detection', 'Trend Identification', 'Recurring Issues', 'Industry Patterns']
+                    },
+                    'Creativity': {
+                        details: ['Alternative Solutions', 'Innovative Approaches', 'Brainstorming', 'Out-of-Box Thinking']
+                    },
+                    'Professional Judgment': {
+                        details: ['Materiality Decisions', 'Risk Evaluation', 'Ethical Dilemmas', 'Complex Situations']
+                    },
+                    'Root Cause Analysis': {
+                        details: ['5 Whys', 'Fishbone Diagrams', 'Process Mapping', 'System Thinking']
+                    },
+                    'Decision Making': {
+                        details: ['Cost-Benefit Analysis', 'Risk Assessment', 'Scenario Planning', 'Stakeholder Input']
+                    },
+                    'Critical Thinking': {
+                        details: ['Logical Analysis', 'Assumption Testing', 'Evidence Evaluation', 'Bias Recognition']
+                    },
+                    'Troubleshooting': {
+                        details: ['Issue Diagnosis', 'Solution Testing', 'Workarounds', 'Technical Support']
+                    }
+                }
+            },
+            
+            'Ethics': {
+                color: '#95a5a6',
+                subConcepts: {
+                    'Professional Standards': {
+                        details: ['AICPA Code', 'Independence Rules', 'Competence Requirements', 'Due Care']
+                    },
+                    'Trust': {
+                        details: ['Confidentiality', 'Reliability', 'Consistency', 'Integrity']
+                    },
+                    'Independence': {
+                        details: ['Objectivity', 'Conflict of Interest', 'Appearance of Independence', 'Mental Independence']
+                    },
+                    'Confidentiality': {
+                        details: ['Client Privacy', 'Data Protection', 'Privileged Information', 'Non-Disclosure']
+                    },
+                    'Conflict of Interest': {
+                        details: ['Identification', 'Disclosure', 'Management', 'Avoidance']
+                    },
+                    'Professional Skepticism': {
+                        details: ['Questioning Attitude', 'Critical Assessment', 'Evidence Evaluation', 'Fraud Awareness']
+                    },
+                    'Ethical Dilemmas': {
+                        details: ['Competing Interests', 'Gray Areas', 'Stakeholder Conflicts', 'Personal vs Professional']
+                    }
+                }
+            },
+            
+            'Time Management': {
+                color: '#34495e',
+                subConcepts: {
+                    'Prioritization': {
+                        details: ['Urgent vs Important', 'Client Priorities', 'Resource Allocation', 'Task Ranking']
+                    },
+                    'Efficiency': {
+                        details: ['Process Optimization', 'Elimination of Waste', 'Standardization', 'Best Practices']
+                    },
+                    'Focus': {
+                        details: ['Deep Work', 'Concentration', 'Distraction Management', 'Single-Tasking']
+                    },
+                    'Scheduling': {
+                        details: ['Calendar Management', 'Time Blocking', 'Meeting Planning', 'Buffer Time']
+                    },
+                    'Delegation': {
+                        details: ['Task Assignment', 'Authority Transfer', 'Follow-Up', 'Team Development']
+                    },
+                    'Workflow Management': {
+                        details: ['Process Design', 'Bottleneck Identification', 'Resource Planning', 'Continuous Flow']
+                    },
+                    'Deadline Management': {
+                        details: ['Timeline Planning', 'Milestone Tracking', 'Risk Buffering', 'Communication']
+                    }
+                }
+            },
+            
+            'Relationships': {
+                color: '#e91e63',
+                subConcepts: {
+                    'Collaboration': {
+                        details: ['Team Projects', 'Cross-Functional Work', 'Knowledge Sharing', 'Collective Problem Solving']
+                    },
+                    'Mentorship': {
+                        details: ['Guidance', 'Skill Development', 'Career Advice', 'Role Modeling']
+                    },
+                    'Experience': {
+                        details: ['Years in Practice', 'Industry Knowledge', 'Technical Expertise', 'Lessons Learned']
+                    },
+                    'Learning': {
+                        details: ['CPE Requirements', 'Technical Training', 'Soft Skills', 'Industry Updates']
+                    },
+                    'Networking': {
+                        details: ['Professional Organizations', 'Industry Events', 'Peer Connections', 'Referral Relationships']
+                    },
+                    'Team Building': {
+                        details: ['Trust Development', 'Culture Creation', 'Conflict Resolution', 'Shared Goals']
+                    },
+                    'Client Relationships': {
+                        details: ['Relationship Building', 'Account Management', 'Long-Term Partnerships', 'Value Delivery']
+                    }
+                }
+            }
+        };
+
+        // Canvas setup
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const infoBox = document.getElementById('infoBox');
+        const breadcrumb = document.getElementById('breadcrumb');
+        const backButton = document.getElementById('backButton');
+        const breadcrumbPath = document.getElementById('breadcrumbPath');
+
+        function resizeCanvas() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // Zoom state
+        let zoomLevel = 0; // 0 = categories, 1 = sub-concepts, 2 = details
+        let zoomPath = []; // Track where we are
+        let nodes = [];
+        let hoveredNode = null;
+        let isDraggingRotation = false;
+        let lastMouseX = 0;
+        let lastMouseY = 0;
+        let rotationX = 0;
+        let rotationY = 0;
+        let autoRotate = true;
+
+        // Camera zoom
+        let cameraZoom = 1.0;
+        const MIN_ZOOM = 0.5;
+        const MAX_ZOOM = 3.0;
+
+        // Isolated category (for filtering)
+        let isolatedCategory = null;
+
+        // Search state
+        let searchQuery = '';
+        let searchMatches = new Set(); // Set of node labels that match search
+
+        // Touch gesture state
+        let touchStartDistance = 0;
+        let touchStartZoom = 1.0;
+        let lastTouchX = 0;
+        let lastTouchY = 0;
+        let lastTapTime = 0;
+
+        // Conversation scenarios - defines which categories become "hot"
+        const conversationScenarios = {
+            'tax-audit': {
+                description: 'Discussing a complex tax audit situation',
+                activeCategories: {
+                    'Tax & Compliance': 3.0,
+                    'Audit & Risk': 2.5,
+                    'Accounting': 2.0,
+                    'Ethics': 1.5,
+                    'Financial Analysis': 1.5
+                }
+            },
+            'client-issue': {
+                description: 'Working through a client relationship challenge',
+                activeCategories: {
+                    'Relationships': 3.0,
+                    'Communication': 2.5,
+                    'Ethics': 2.0,
+                    'Problem Solving': 1.5
+                }
+            },
+            'automation': {
+                description: 'Planning a process automation implementation',
+                activeCategories: {
+                    'Technology': 3.0,
+                    'Problem Solving': 2.0,
+                    'Time Management': 2.0,
+                    'Financial Analysis': 1.5
+                }
+            },
+            'compliance': {
+                description: 'Managing multiple compliance deadlines',
+                activeCategories: {
+                    'Time Management': 3.0,
+                    'Tax & Compliance': 2.5,
+                    'Problem Solving': 2.0,
+                    'Communication': 1.5
+                }
+            },
+            'ethics': {
+                description: 'Navigating an ethical dilemma',
+                activeCategories: {
+                    'Ethics': 3.0,
+                    'Problem Solving': 2.5,
+                    'Relationships': 2.0,
+                    'Communication': 1.5
+                }
+            },
+            'training': {
+                description: 'Onboarding and training new staff',
+                activeCategories: {
+                    'Relationships': 3.0,
+                    'Communication': 2.5,
+                    'Technology': 1.5,
+                    'Problem Solving': 1.5
+                }
+            }
+        };
+
+        let currentScenario = null;
+
+        // Calculate connection count for a node (for search ranking)
+        function getNodeConnectionCount(nodeName, categoryName) {
+            let count = 0;
+
+            // Categories have the most connections (all their sub-concepts)
+            if (knowledgeGraph[nodeName]) {
+                const subConcepts = knowledgeGraph[nodeName].subConcepts;
+                count += Object.keys(subConcepts).length;
+                // Add detail connections
+                Object.values(subConcepts).forEach(subConcept => {
+                    count += (subConcept.details || []).length;
+                });
+            } else {
+                // Sub-concepts: count their details
+                for (const cat in knowledgeGraph) {
+                    if (knowledgeGraph[cat].subConcepts[nodeName]) {
+                        count += (knowledgeGraph[cat].subConcepts[nodeName].details || []).length;
+                        break;
+                    }
+                }
+            }
+
+            return count;
+        }
+
+        // Search function - returns top N matches ranked by connection count
+        function searchNodes(query, maxResults = 5) {
+            if (!query || query.length === 0) {
+                return [];
+            }
+
+            const matches = [];
+            const lowerQuery = query.toLowerCase();
+
+            // Search categories
+            Object.keys(knowledgeGraph).forEach(catName => {
+                if (catName.toLowerCase().includes(lowerQuery)) {
+                    matches.push({
+                        label: catName,
+                        category: catName,
+                        type: 'category',
+                        connectionCount: getNodeConnectionCount(catName, catName)
+                    });
+                }
+
+                // Search sub-concepts
+                Object.keys(knowledgeGraph[catName].subConcepts).forEach(subName => {
+                    if (subName.toLowerCase().includes(lowerQuery)) {
+                        matches.push({
+                            label: subName,
+                            category: catName,
+                            type: 'subConcept',
+                            connectionCount: getNodeConnectionCount(subName, catName)
+                        });
+                    }
+
+                    // Search details
+                    (knowledgeGraph[catName].subConcepts[subName].details || []).forEach(detailName => {
+                        if (detailName.toLowerCase().includes(lowerQuery)) {
+                            matches.push({
+                                label: detailName,
+                                category: catName,
+                                type: 'detail',
+                                connectionCount: 1 // Details have minimal connections
+                            });
+                        }
+                    });
+                });
+            });
+
+            // Sort by connection count (descending), then alphabetically
+            matches.sort((a, b) => {
+                if (b.connectionCount !== a.connectionCount) {
+                    return b.connectionCount - a.connectionCount;
+                }
+                return a.label.localeCompare(b.label);
+            });
+
+            // Return top N results
+            return matches.slice(0, maxResults);
+        }
+
+        // Set up conversation scenario dropdown
+        const scenarioDropdown = document.getElementById('conversationScenario');
+        const scenarioInfo = document.getElementById('scenarioInfo');
+
+        scenarioDropdown.addEventListener('change', (e) => {
+            const scenarioKey = e.target.value;
+            currentScenario = scenarioKey ? conversationScenarios[scenarioKey] : null;
+
+            // Update info text
+            if (currentScenario) {
+                scenarioInfo.textContent = currentScenario.description;
+            } else {
+                scenarioInfo.textContent = "Select a conversation to see which concepts become \"active\" and gain prominence in the space.";
+            }
+        });
+
+        // Set up search box
+        const searchBox = document.getElementById('searchBox');
+        const searchInfo = document.getElementById('searchInfo');
+
+        searchBox.addEventListener('input', (e) => {
+            searchQuery = e.target.value.trim();
+
+            if (searchQuery.length === 0) {
+                searchMatches.clear();
+                searchInfo.textContent = "Searches by name, highlights matching nodes";
+            } else {
+                const results = searchNodes(searchQuery, 5);
+                searchMatches.clear();
+                results.forEach(match => searchMatches.add(match.label));
+
+                if (results.length > 0) {
+                    const resultText = results.map(r => r.label).join(', ');
+                    searchInfo.textContent = `Found: ${resultText}`;
+                } else {
+                    searchInfo.textContent = "No matches found";
+                }
+            }
+        });
+
+        // Helper function to get "heat" for a category based on current scenario or isolation
+        function getCategoryHeat(categoryName) {
+            // Isolation takes priority over scenario
+            if (isolatedCategory) {
+                return isolatedCategory === categoryName ? 3.0 : 0.3;
+            }
+
+            if (!currentScenario || !currentScenario.activeCategories) {
+                return 1.0; // Normal state
+            }
+            return currentScenario.activeCategories[categoryName] || 1.0;
+        }
+
+        // 3D rotation functions
+        function rotateY(x, y, z, angle) {
+            const cos = Math.cos(angle);
+            const sin = Math.sin(angle);
+            return {
+                x: x * cos + z * sin,
+                y: y,
+                z: -x * sin + z * cos
+            };
+        }
+
+        function rotateX(x, y, z, angle) {
+            const cos = Math.cos(angle);
+            const sin = Math.sin(angle);
+            return {
+                x: x,
+                y: y * cos - z * sin,
+                z: y * sin + z * cos
+            };
+        }
+
+        function rotate3D(x, y, z, angleX, angleY) {
+            let result = rotateY(x, y, z, angleY);
+            result = rotateX(result.x, result.y, result.z, angleX);
+            return result;
+        }
+
+        // Generate nodes for current zoom level
+        function generateNodes() {
+            nodes = [];
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+
+            if (zoomLevel === 0) {
+                // Level 0: Main categories
+                const categoryNames = Object.keys(knowledgeGraph);
+                const categoryNodes = [];
+
+                // Use Fibonacci sphere for even distribution
+                categoryNames.forEach((name, i) => {
+                    const goldenRatio = (1 + Math.sqrt(5)) / 2;
+                    const angleIncrement = Math.PI * 2 * goldenRatio;
+                    const theta = angleIncrement * i;
+                    const phi = Math.acos(1 - 2 * (i + 0.5) / categoryNames.length);
+
+                    const radius = 200;
+                    const x = radius * Math.sin(phi) * Math.cos(theta);
+                    const y = radius * Math.sin(phi) * Math.sin(theta);
+                    const z = radius * Math.cos(phi);
+
+                    const catNode = {
+                        label: name,
+                        category: name,
+                        color: knowledgeGraph[name].color,
+                        x: centerX + x,
+                        y: centerY + y,
+                        z: z,
+                        vx: 0,
+                        vy: 0,
+                        vz: 0,
+                        radius: 15,
+                        clickable: true,
+                        isParent: true,
+                        showLabel: true,
+                        connections: []
+                    };
+                    nodes.push(catNode);
+                    categoryNodes.push(catNode);
+                });
+
+                // Add sub-concept nodes around parent categories (revealed on zoom)
+                categoryNodes.forEach((parentNode) => {
+                    const subConcepts = Object.keys(knowledgeGraph[parentNode.category].subConcepts);
+
+                    subConcepts.forEach((subConceptName, i) => {
+                        // Distribute evenly around parent in 3D
+                        const goldenRatio = (1 + Math.sqrt(5)) / 2;
+                        const angleIncrement = Math.PI * 2 * goldenRatio;
+                        const theta = angleIncrement * i;
+                        const phi = Math.acos(1 - 2 * (i + 0.5) / subConcepts.length);
+
+                        const clusterRadius = 45; // Distance from parent
+                        const offsetX = clusterRadius * Math.sin(phi) * Math.cos(theta);
+                        const offsetY = clusterRadius * Math.sin(phi) * Math.sin(theta);
+                        const offsetZ = clusterRadius * Math.cos(phi);
+
+                        const subConceptNode = {
+                            label: subConceptName,
+                            category: parentNode.category,
+                            color: parentNode.color,
+                            x: parentNode.x + offsetX,
+                            y: parentNode.y + offsetY,
+                            z: parentNode.z + offsetZ,
+                            vx: 0,
+                            vy: 0,
+                            vz: 0,
+                            radius: 7,
+                            isSubConcept: true,
+                            clickable: false,
+                            showLabelOnZoom: true, // Label appears based on camera zoom
+                            parentNode: parentNode
+                        };
+
+                        nodes.push(subConceptNode);
+                        parentNode.connections.push(subConceptNode);
+                    });
+                });
+
+                // Add density nodes clustered around parent categories
+                const densityPerCategory = 8; // Reduced since we now have sub-concepts
+                categoryNodes.forEach((parentNode) => {
+                    for (let i = 0; i < densityPerCategory; i++) {
+                        // 70% chance to cluster close, 30% chance to spread out
+                        const isClose = Math.random() < 0.7;
+                        const clusterRadius = isClose ? 25 + Math.random() * 35 : 70 + Math.random() * 70;
+
+                        // Random position in 3D space around parent using spherical coordinates
+                        const theta = Math.random() * Math.PI * 2;
+                        const phi = Math.acos(2 * Math.random() - 1);
+
+                        const offsetX = clusterRadius * Math.sin(phi) * Math.cos(theta);
+                        const offsetY = clusterRadius * Math.sin(phi) * Math.sin(theta);
+                        const offsetZ = clusterRadius * Math.cos(phi);
+
+                        const densityNode = {
+                            label: '',
+                            category: parentNode.category,
+                            color: parentNode.color,
+                            x: parentNode.x + offsetX,
+                            y: parentNode.y + offsetY,
+                            z: parentNode.z + offsetZ,
+                            vx: 0,
+                            vy: 0,
+                            vz: 0,
+                            radius: 5,
+                            isDense: true,
+                            clickable: false,
+                            parentNode: parentNode
+                        };
+
+                        nodes.push(densityNode);
+                        parentNode.connections.push(densityNode);
+                    }
+                });
+
+                // Add additional volumetric fill for true spherical appearance
+                for (let i = 0; i < 50; i++) {
+                    // Distribute throughout the sphere volume
+                    const r = Math.cbrt(Math.random()) * 180; // Cubic root for volume distribution
+                    const theta = Math.random() * Math.PI * 2;
+                    const phi = Math.acos(2 * Math.random() - 1);
+
+                    const x = r * Math.sin(phi) * Math.cos(theta);
+                    const y = r * Math.sin(phi) * Math.sin(theta);
+                    const z = r * Math.cos(phi);
+
+                    // Pick a random category for color
+                    const catIndex = Math.floor(Math.random() * categoryNodes.length);
+                    const parentNode = categoryNodes[catIndex];
+
+                    nodes.push({
+                        label: '',
+                        category: parentNode.category,
+                        color: parentNode.color,
+                        x: centerX + x,
+                        y: centerY + y,
+                        z: z,
+                        vx: 0,
+                        vy: 0,
+                        vz: 0,
+                        radius: 4,
+                        isDense: true,
+                        clickable: false
+                    });
+                }
+
+            } else if (zoomLevel === 1) {
+                // Level 1: Sub-concepts within a category + related concepts from other categories
+                const categoryName = zoomPath[0];
+                const subConcepts = Object.keys(knowledgeGraph[categoryName].subConcepts);
+
+                // Define cross-category relationships
+                const relatedCategories = {
+                    'Accounting': ['Financial Analysis', 'Tax & Compliance'],
+                    'Tax & Compliance': ['Accounting', 'Ethics'],
+                    'Audit & Risk': ['Accounting', 'Ethics', 'Problem Solving'],
+                    'Financial Analysis': ['Accounting', 'Technology'],
+                    'Technology': ['Problem Solving', 'Communication'],
+                    'Communication': ['Relationships', 'Problem Solving'],
+                    'Problem Solving': ['Technology', 'Communication', 'Ethics'],
+                    'Ethics': ['Problem Solving', 'Relationships'],
+                    'Time Management': ['Problem Solving', 'Technology'],
+                    'Relationships': ['Communication', 'Ethics']
+                };
+
+                const relatedCats = relatedCategories[categoryName] || [];
+
+                // Add main category sub-concepts (larger, primary)
+                subConcepts.forEach((name, i) => {
+                    const goldenRatio = (1 + Math.sqrt(5)) / 2;
+                    const angleIncrement = Math.PI * 2 * goldenRatio;
+                    const theta = angleIncrement * i;
+                    const phi = Math.acos(1 - 2 * (i + 0.5) / subConcepts.length);
+
+                    const radius = 180;
+                    const x = radius * Math.sin(phi) * Math.cos(theta);
+                    const y = radius * Math.sin(phi) * Math.sin(theta);
+                    const z = radius * Math.cos(phi);
+
+                    nodes.push({
+                        label: name,
+                        category: categoryName,
+                        color: knowledgeGraph[categoryName].color,
+                        x: centerX + x,
+                        y: centerY + y,
+                        z: z,
+                        vx: 0,
+                        vy: 0,
+                        vz: 0,
+                        radius: 12,
+                        clickable: true,
+                        showLabel: true,
+                        isPrimary: true
+                    });
+                });
+
+                // Add related concepts from other categories (smaller, secondary)
+                let relatedConceptCount = 0;
+                const maxRelatedConcepts = 8; // Limit to avoid crowding
+
+                relatedCats.forEach(relatedCat => {
+                    const relatedSubConcepts = Object.keys(knowledgeGraph[relatedCat].subConcepts);
+                    // Take 2-3 concepts from each related category
+                    const numToTake = Math.min(3, relatedSubConcepts.length);
+
+                    for (let i = 0; i < numToTake && relatedConceptCount < maxRelatedConcepts; i++) {
+                        const name = relatedSubConcepts[i];
+
+                        // Place on outer sphere, more spread out
+                        const theta = Math.random() * Math.PI * 2;
+                        const phi = Math.acos(2 * Math.random() - 1);
+                        const radius = 220 + Math.random() * 40;
+
+                        const x = radius * Math.sin(phi) * Math.cos(theta);
+                        const y = radius * Math.sin(phi) * Math.sin(theta);
+                        const z = radius * Math.cos(phi);
+
+                        nodes.push({
+                            label: name,
+                            category: relatedCat,
+                            color: knowledgeGraph[relatedCat].color,
+                            x: centerX + x,
+                            y: centerY + y,
+                            z: z,
+                            vx: 0,
+                            vy: 0,
+                            vz: 0,
+                            radius: 8,
+                            clickable: false, // Can't drill into cross-category concepts
+                            showLabel: true,
+                            isRelated: true
+                        });
+
+                        relatedConceptCount++;
+                    }
+                });
+
+                // Density nodes for volumetric effect
+                for (let i = 0; i < 40; i++) { // Moderate density for sub-concepts
+                    const r = Math.random() * 150;
+                    const theta = Math.random() * Math.PI * 2;
+                    const phi = Math.acos(2 * Math.random() - 1);
+                    
+                    const x = r * Math.sin(phi) * Math.cos(theta);
+                    const y = r * Math.sin(phi) * Math.sin(theta);
+                    const z = r * Math.cos(phi);
+
+                    nodes.push({
+                        label: '',
+                        category: categoryName,
+                        color: knowledgeGraph[categoryName].color,
+                        x: centerX + x,
+                        y: centerY + y,
+                        z: z,
+                        vx: 0,
+                        vy: 0,
+                        vz: 0,
+                        radius: 4,
+                        isDense: true,
+                        clickable: false
+                    });
+                }
+
+            } else if (zoomLevel === 2) {
+                // Level 2: Details within a sub-concept
+                const categoryName = zoomPath[0];
+                const subConceptName = zoomPath[1];
+                const details = knowledgeGraph[categoryName].subConcepts[subConceptName].details;
+
+                details.forEach((name, i) => {
+                    const angle = (i / details.length) * Math.PI * 2;
+                    const radius = 150;
+                    const x = Math.cos(angle) * radius;
+                    const y = Math.sin(angle) * radius;
+
+                    nodes.push({
+                        label: name,
+                        category: categoryName,
+                        color: knowledgeGraph[categoryName].color,
+                        x: centerX + x,
+                        y: centerY + y,
+                        z: 0,
+                        vx: 0,
+                        vy: 0,
+                        vz: 0,
+                        radius: 10,
+                        clickable: false, // Can't zoom deeper
+                        showLabel: true
+                    });
+                });
+
+                // Lighter density at deepest level
+                for (let i = 0; i < 25; i++) { // Less density to keep details visible
+                    const r = Math.random() * 120;
+                    const theta = Math.random() * Math.PI * 2;
+                    const phi = Math.acos(2 * Math.random() - 1);
+                    
+                    const x = r * Math.sin(phi) * Math.cos(theta);
+                    const y = r * Math.sin(phi) * Math.sin(theta);
+                    const z = r * Math.cos(phi);
+
+                    nodes.push({
+                        label: '',
+                        category: categoryName,
+                        color: knowledgeGraph[categoryName].color,
+                        x: centerX + x,
+                        y: centerY + y,
+                        z: z,
+                        vx: 0,
+                        vy: 0,
+                        vz: 0,
+                        radius: 3,
+                        isDense: true,
+                        clickable: false
+                    });
+                }
+            }
+        }
+
+        // Update breadcrumb display
+        function updateBreadcrumb() {
+            if (zoomLevel === 0 && !isolatedCategory) {
+                breadcrumb.style.display = 'none';
+            } else {
+                breadcrumb.style.display = 'block';
+                if (isolatedCategory && zoomLevel === 0) {
+                    breadcrumbPath.textContent = `Isolated: ${isolatedCategory}`;
+                    backButton.textContent = '✕ Clear Filter';
+                } else {
+                    breadcrumbPath.textContent = zoomPath.join(' > ');
+                    backButton.textContent = '← Back';
+                }
+            }
+        }
+
+        // Zoom in to a node
+        function zoomIn(node) {
+            if (!node.clickable) return;
+
+            // Clear isolation when zooming in
+            isolatedCategory = null;
+
+            zoomPath.push(node.label);
+            zoomLevel++;
+
+            // Fade out current sphere
+            canvas.style.opacity = '0';
+            canvas.style.transition = 'opacity 0.3s';
+
+            setTimeout(() => {
+                generateNodes();
+                updateBreadcrumb();
+                canvas.style.opacity = '1';
+            }, 300);
+        }
+
+        // Zoom out
+        function zoomOut() {
+            if (zoomLevel === 0) return;
+            
+            zoomPath.pop();
+            zoomLevel--;
+            
+            canvas.style.opacity = '0';
+            canvas.style.transition = 'opacity 0.3s';
+            
+            setTimeout(() => {
+                generateNodes();
+                updateBreadcrumb();
+                canvas.style.opacity = '1';
+            }, 300);
+        }
+
+        // Physics (simplified - just sphere constraint)
+        function updatePhysics() {
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const targetRadius = zoomLevel === 0 ? 200 : zoomLevel === 1 ? 180 : 150;
+            
+            nodes.forEach(node => {
+                const dx = node.x - centerX;
+                const dy = node.y - centerY;
+                const dz = node.z || 0;
+                const dist = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
+                
+                // Pull to sphere surface
+                const radiusDiff = dist - targetRadius;
+                const force = 0.1;
+                
+                node.vx -= (dx / dist) * radiusDiff * force;
+                node.vy -= (dy / dist) * radiusDiff * force;
+                node.vz = (node.vz || 0) - (dz / dist) * radiusDiff * force;
+                
+                // Damping
+                node.vx *= 0.95;
+                node.vy *= 0.95;
+                node.vz *= 0.95;
+                
+                node.x += node.vx;
+                node.y += node.vy;
+                node.z = (node.z || 0) + node.vz;
+            });
+        }
+
+        // Draw
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            
+            // Apply rotation, camera zoom, and sort by depth
+            const displayNodes = nodes.map(node => {
+                const relX = node.x - centerX;
+                const relY = node.y - centerY;
+                const relZ = node.z || 0;
+                const rotated = rotate3D(relX, relY, relZ, rotationX, rotationY);
+
+                return {
+                    ...node,
+                    displayX: centerX + rotated.x * cameraZoom,
+                    displayY: centerY + rotated.y * cameraZoom,
+                    displayZ: rotated.z
+                };
+            }).sort((a, b) => a.displayZ - b.displayZ);
+
+            // Calculate zoom-based connection multipliers
+            const zoomConnectionMultiplier = Math.min(1.8, 0.5 + (cameraZoom - 1) * 0.8); // 0.5x at zoom 1.0, up to 1.8x at high zoom
+            const zoomLineThickness = Math.max(0.6, Math.min(1.5, cameraZoom * 0.8)); // Scale line thickness with zoom
+
+            // Draw connection lines (before nodes so they appear behind)
+            if (zoomLevel === 0) {
+                displayNodes.forEach(node => {
+                    if (node.isParent && node.connections) {
+                        node.connections.forEach(connectedNode => {
+                            // Find the display version of connected node
+                            const connDisplay = displayNodes.find(dn => dn === connectedNode ||
+                                (dn.x === connectedNode.x && dn.y === connectedNode.y));
+
+                            if (connDisplay) {
+                                // Calculate depth factor for line opacity
+                                const avgZ = (node.displayZ + connDisplay.displayZ) / 2;
+                                const depthFactor = (avgZ + 250) / 500;
+                                const baseOpacity = 0.35 + (0.2 * depthFactor);
+                                const opacity = baseOpacity * zoomConnectionMultiplier;
+
+                                ctx.beginPath();
+                                ctx.moveTo(node.displayX, node.displayY);
+                                ctx.lineTo(connDisplay.displayX, connDisplay.displayY);
+
+                                // Parse parent color for line
+                                const r = parseInt(node.color.slice(1, 3), 16);
+                                const g = parseInt(node.color.slice(3, 5), 16);
+                                const b = parseInt(node.color.slice(5, 7), 16);
+
+                                ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${opacity})`;
+                                ctx.lineWidth = 1 * zoomLineThickness;
+                                ctx.stroke();
+                            }
+                        });
+                    }
+                });
+
+                // Add cross-connections between nearby parent nodes
+                const parentNodes = displayNodes.filter(n => n.isParent);
+                parentNodes.forEach((node1, i) => {
+                    parentNodes.forEach((node2, j) => {
+                        if (i < j) { // Only draw once per pair
+                            // Calculate 3D distance
+                            const dx = node1.x - node2.x;
+                            const dy = node1.y - node2.y;
+                            const dz = (node1.z || 0) - (node2.z || 0);
+                            const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+                            // Connect all nearby parent nodes
+                            if (dist < 400) {
+                                const avgZ = (node1.displayZ + node2.displayZ) / 2;
+                                const depthFactor = (avgZ + 250) / 500;
+                                const baseOpacity = 0.15 + (0.15 * depthFactor);
+                                const opacity = baseOpacity * zoomConnectionMultiplier;
+
+                                ctx.beginPath();
+                                ctx.moveTo(node1.displayX, node1.displayY);
+                                ctx.lineTo(node2.displayX, node2.displayY);
+                                ctx.strokeStyle = `rgba(200, 200, 220, ${opacity})`;
+                                ctx.lineWidth = 1.5 * zoomLineThickness;
+                                ctx.stroke();
+                            }
+                        }
+                    });
+                });
+
+                // Add connections between density nodes of the same category
+                displayNodes.forEach((node1, i) => {
+                    if (node1.isDense && node1.parentNode) {
+                        displayNodes.forEach((node2, j) => {
+                            if (i < j && node2.isDense && node2.parentNode === node1.parentNode) {
+                                // Calculate distance
+                                const dx = node1.x - node2.x;
+                                const dy = node1.y - node2.y;
+                                const dz = (node1.z || 0) - (node2.z || 0);
+                                const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+                                // Connect nearby density nodes within same category
+                                if (dist < 80) {
+                                    const avgZ = (node1.displayZ + node2.displayZ) / 2;
+                                    const depthFactor = (avgZ + 250) / 500;
+                                    const baseOpacity = 0.15 + (0.1 * depthFactor);
+                                    const opacity = baseOpacity * zoomConnectionMultiplier;
+
+                                    ctx.beginPath();
+                                    ctx.moveTo(node1.displayX, node1.displayY);
+                                    ctx.lineTo(node2.displayX, node2.displayY);
+
+                                    // Use parent color
+                                    const r = parseInt(node1.color.slice(1, 3), 16);
+                                    const g = parseInt(node1.color.slice(3, 5), 16);
+                                    const b = parseInt(node1.color.slice(5, 7), 16);
+
+                                    ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${opacity})`;
+                                    ctx.lineWidth = 0.75 * zoomLineThickness;
+                                    ctx.stroke();
+                                }
+                            }
+                        });
+                    }
+                });
+            }
+
+            // Level 1: Draw connections between sub-concepts
+            if (zoomLevel === 1) {
+                // Connect primary nodes to each other
+                const primaryNodes = displayNodes.filter(n => n.isPrimary);
+                primaryNodes.forEach((node1, i) => {
+                    primaryNodes.forEach((node2, j) => {
+                        if (i < j) {
+                            const dx = node1.x - node2.x;
+                            const dy = node1.y - node2.y;
+                            const dz = (node1.z || 0) - (node2.z || 0);
+                            const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+                            if (dist < 300) {
+                                const avgZ = (node1.displayZ + node2.displayZ) / 2;
+                                const depthFactor = (avgZ + 250) / 500;
+                                const baseOpacity = 0.2 + (0.15 * depthFactor);
+                                const opacity = baseOpacity * zoomConnectionMultiplier;
+
+                                ctx.beginPath();
+                                ctx.moveTo(node1.displayX, node1.displayY);
+                                ctx.lineTo(node2.displayX, node2.displayY);
+
+                                const r = parseInt(node1.color.slice(1, 3), 16);
+                                const g = parseInt(node1.color.slice(3, 5), 16);
+                                const b = parseInt(node1.color.slice(5, 7), 16);
+
+                                ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${opacity})`;
+                                ctx.lineWidth = 1.2 * zoomLineThickness;
+                                ctx.stroke();
+                            }
+                        }
+                    });
+                });
+
+                // Connect primary nodes to nearby related nodes
+                const relatedNodes = displayNodes.filter(n => n.isRelated);
+                primaryNodes.forEach((primaryNode, i) => {
+                    relatedNodes.forEach((relatedNode, j) => {
+                        const dx = primaryNode.x - relatedNode.x;
+                        const dy = primaryNode.y - relatedNode.y;
+                        const dz = (primaryNode.z || 0) - (relatedNode.z || 0);
+                        const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+                        // Only connect nearby ones (deterministic based on indices)
+                        if (dist < 250 && (i + j) % 3 === 0) {
+                            const avgZ = (primaryNode.displayZ + relatedNode.displayZ) / 2;
+                            const depthFactor = (avgZ + 250) / 500;
+                            const baseOpacity = 0.12 + (0.08 * depthFactor);
+                            const opacity = baseOpacity * zoomConnectionMultiplier;
+
+                            ctx.beginPath();
+                            ctx.moveTo(primaryNode.displayX, primaryNode.displayY);
+                            ctx.lineTo(relatedNode.displayX, relatedNode.displayY);
+                            ctx.strokeStyle = `rgba(150, 150, 200, ${opacity})`;
+                            ctx.lineWidth = 0.8 * zoomLineThickness;
+                            ctx.stroke();
+                        }
+                    });
+                });
+            }
+
+            // Level 2: Draw connections between detail nodes
+            if (zoomLevel === 2) {
+                const labeledNodes = displayNodes.filter(n => n.label && !n.isDense);
+                labeledNodes.forEach((node1, i) => {
+                    labeledNodes.forEach((node2, j) => {
+                        if (i < j) {
+                            const dx = node1.x - node2.x;
+                            const dy = node1.y - node2.y;
+                            const dz = (node1.z || 0) - (node2.z || 0);
+                            const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+                            if (dist < 250) {
+                                const avgZ = (node1.displayZ + node2.displayZ) / 2;
+                                const depthFactor = (avgZ + 250) / 500;
+                                const baseOpacity = 0.2 + (0.15 * depthFactor);
+                                const opacity = baseOpacity * zoomConnectionMultiplier;
+
+                                ctx.beginPath();
+                                ctx.moveTo(node1.displayX, node1.displayY);
+                                ctx.lineTo(node2.displayX, node2.displayY);
+
+                                const r = parseInt(node1.color.slice(1, 3), 16);
+                                const g = parseInt(node1.color.slice(3, 5), 16);
+                                const b = parseInt(node1.color.slice(5, 7), 16);
+
+                                ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${opacity})`;
+                                ctx.lineWidth = 1 * zoomLineThickness;
+                                ctx.stroke();
+                            }
+                        }
+                    });
+                });
+            }
+
+            // Draw nodes
+            displayNodes.forEach(node => {
+                const z = node.displayZ;
+                const depthFactor = (z + 250) / 500;
+                const scale = 0.5 + 0.5 * depthFactor;
+
+                // Check if node matches search
+                const isSearchMatch = searchMatches.has(node.label);
+                const searchActive = searchMatches.size > 0;
+
+                // Get heat for this node's category
+                const heat = getCategoryHeat(node.category);
+                const isHot = heat > 1.0;
+                const scenarioActive = currentScenario !== null;
+
+                // Related nodes are slightly more transparent
+                let alpha;
+                if (node.isDense) {
+                    alpha = 0.5 + 0.3 * depthFactor;
+                    // Fade out non-hot dense nodes when scenario is active
+                    if (scenarioActive && !isHot) {
+                        alpha *= 0.3; // Much more transparent
+                    }
+                } else if (node.isRelated) {
+                    alpha = 0.6 + 0.2 * depthFactor;
+                    if (scenarioActive && !isHot) {
+                        alpha *= 0.4;
+                    }
+                } else {
+                    alpha = 0.9 + 0.1 * depthFactor;
+                    // Fade out non-hot primary nodes when scenario is active
+                    if (scenarioActive && !isHot) {
+                        alpha *= 0.35; // Significantly more transparent
+                    }
+                }
+
+                // Apply search highlighting/dimming
+                if (searchActive) {
+                    if (isSearchMatch) {
+                        // Boost matched nodes
+                        alpha = Math.min(1.0, alpha * 1.3);
+                    } else {
+                        // Dim non-matched nodes
+                        alpha *= 0.3;
+                    }
+                }
+
+                // Apply heat scaling to radius (hot nodes grow bigger)
+                const heatScale = isHot ? 1 + ((heat - 1) * 0.3) : 1; // Max 90% larger at 3.0 heat
+                const radius = node.radius * scale * heatScale * cameraZoom;
+
+                // Parse color and add alpha
+                let r = parseInt(node.color.slice(1, 3), 16);
+                let g = parseInt(node.color.slice(3, 5), 16);
+                let b = parseInt(node.color.slice(5, 7), 16);
+
+                // Shift color toward red/orange for hot nodes
+                if (isHot) {
+                    const heatIntensity = (heat - 1) / 2; // 0 to 1.0 for heat 1.0 to 3.0
+                    // Shift toward warm colors (increase red, slightly increase green, reduce blue)
+                    r = Math.min(255, r + (255 - r) * heatIntensity * 0.6);
+                    g = Math.min(255, g + (200 - g) * heatIntensity * 0.3);
+                    b = Math.max(0, b * (1 - heatIntensity * 0.5));
+                } else if (scenarioActive) {
+                    // Desaturate non-hot nodes when scenario is active (grey them out)
+                    const grey = (r + g + b) / 3; // Average for greyscale
+                    const desaturationAmount = 0.6; // 60% towards grey
+                    r = r + (grey - r) * desaturationAmount;
+                    g = g + (grey - g) * desaturationAmount;
+                    b = b + (grey - b) * desaturationAmount;
+                }
+
+                // Draw node
+                ctx.beginPath();
+                ctx.arc(node.displayX, node.displayY, radius, 0, Math.PI * 2);
+
+                // Gradient fill for depth
+                const gradient = ctx.createRadialGradient(
+                    node.displayX - radius * 0.3,
+                    node.displayY - radius * 0.3,
+                    radius * 0.1,
+                    node.displayX,
+                    node.displayY,
+                    radius * 1.2
+                );
+                const lightR = Math.min(255, r + 40);
+                const lightG = Math.min(255, g + 40);
+                const lightB = Math.min(255, b + 40);
+
+                gradient.addColorStop(0, `rgba(${lightR}, ${lightG}, ${lightB}, ${alpha})`);
+                gradient.addColorStop(1, `rgba(${r}, ${g}, ${b}, ${alpha})`);
+                ctx.fillStyle = gradient;
+                ctx.fill();
+
+                // Glow effect for labeled nodes (intensified for hot nodes, reduced for cold)
+                if (!node.isDense) {
+                    let glowIntensity, glowAlpha;
+                    if (isSearchMatch) {
+                        // Search matches: bright cyan/blue glow
+                        glowIntensity = 20 * scale;
+                        glowAlpha = 0.9;
+                        ctx.shadowBlur = glowIntensity;
+                        ctx.shadowColor = `rgba(52, 152, 219, ${glowAlpha})`;
+                        ctx.strokeStyle = `rgba(52, 152, 219, ${alpha * 0.8})`;
+                        ctx.lineWidth = 2.5 * scale;
+                        ctx.stroke();
+                    } else if (isHot) {
+                        // Hot nodes: stronger, brighter glow
+                        glowIntensity = 12 * scale * (1 + (heat - 1) * 0.5);
+                        glowAlpha = 0.6 + (heat - 1) * 0.15;
+                        ctx.shadowBlur = glowIntensity;
+                        ctx.shadowColor = `rgba(${r}, ${g}, ${b}, ${glowAlpha})`;
+                        ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.4})`;
+                        ctx.lineWidth = 1.5 * scale;
+                        ctx.stroke();
+                    } else if (scenarioActive) {
+                        // Cold nodes when scenario active: minimal glow
+                        glowIntensity = 4 * scale;
+                        glowAlpha = 0.2;
+                        ctx.shadowBlur = glowIntensity;
+                        ctx.shadowColor = `rgba(${r}, ${g}, ${b}, ${glowAlpha})`;
+                        ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.4})`;
+                        ctx.lineWidth = 1.5 * scale;
+                        ctx.stroke();
+                    } else {
+                        // Normal state: regular glow
+                        glowIntensity = 12 * scale;
+                        glowAlpha = 0.6;
+                        ctx.shadowBlur = glowIntensity;
+                        ctx.shadowColor = `rgba(${r}, ${g}, ${b}, ${glowAlpha})`;
+                        ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.4})`;
+                        ctx.lineWidth = 1.5 * scale;
+                        ctx.stroke();
+                    }
+                }
+
+                // Reset shadow
+                ctx.shadowBlur = 0;
+            });
+
+            // Draw labels for nodes with labels (visibility depends on zoom)
+            displayNodes.forEach(node => {
+                // Check if label should be shown
+                let shouldShowLabel = false;
+                if (node.isParent) {
+                    shouldShowLabel = true; // Category labels always visible
+                } else if (node.showLabel) {
+                    shouldShowLabel = true; // Sub-concepts at level 1+
+                } else if (node.showLabelOnZoom && cameraZoom >= 1.4) {
+                    shouldShowLabel = true; // Sub-concepts at level 0, only when zoomed in
+                }
+
+                if (shouldShowLabel && node.label) {
+                    const z = node.displayZ;
+                    const depthFactor = (z + 250) / 500;
+                    const scale = 0.5 + 0.5 * depthFactor;
+
+                    // Check if node matches search
+                    const isSearchMatch = searchMatches.has(node.label);
+                    const searchActive = searchMatches.size > 0;
+
+                    // Get heat for label visibility
+                    const heat = getCategoryHeat(node.category);
+                    const isHot = heat > 1.0;
+                    const scenarioActive = currentScenario !== null;
+
+                    const heatScale = isHot ? 1 + ((heat - 1) * 0.3) : 1;
+                    const radius = node.radius * scale * heatScale;
+
+                    // Reduce label alpha for inactive nodes
+                    let alpha = 0.7 + (0.3 * depthFactor);
+                    if (scenarioActive && !isHot) {
+                        alpha *= 0.25; // Much less visible for inactive labels
+                    }
+
+                    // Fade in sub-concept labels gradually as zoom increases
+                    if (node.showLabelOnZoom) {
+                        const zoomFadeStart = 1.4;
+                        const zoomFadeFull = 2.0;
+                        const zoomFade = Math.min(1, Math.max(0, (cameraZoom - zoomFadeStart) / (zoomFadeFull - zoomFadeStart)));
+                        alpha *= zoomFade;
+                    }
+
+                    // Apply search highlighting/dimming to labels
+                    if (searchActive) {
+                        if (isSearchMatch) {
+                            alpha = Math.min(1.0, alpha * 1.5); // Boost matched labels
+                        } else {
+                            alpha *= 0.25; // Dim non-matched labels
+                        }
+                    }
+
+                    // Font size based on depth and node type
+                    let baseFontSize = 12;
+                    let fontStyle = 'normal';
+                    if (node.isRelated) {
+                        baseFontSize = 10;
+                        fontStyle = 'italic';
+                    } else if (node.isSubConcept) {
+                        baseFontSize = 10; // Sub-concepts: smaller than categories
+                        fontStyle = 'normal';
+                    }
+                    const fontSize = baseFontSize * scale;
+                    ctx.font = `${fontStyle} ${fontSize}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+
+                    // Measure text for background
+                    const textMetrics = ctx.measureText(node.label);
+                    const textWidth = textMetrics.width;
+                    const textHeight = fontSize * 1.2;
+                    const padding = (node.isRelated || node.isSubConcept) ? 4 * scale : 6 * scale;
+
+                    // Label position (slightly offset from node)
+                    const labelY = node.displayY - radius - 18 * scale;
+
+                    // Background color - special styling for search matches
+                    let bgAlpha, bgColor, borderColor, borderWidth;
+
+                    if (isSearchMatch) {
+                        // Search match: bright blue background
+                        bgAlpha = alpha * 0.8;
+                        bgColor = `rgba(52, 152, 219, ${bgAlpha * 0.3})`;
+                        borderColor = `rgba(52, 152, 219, ${alpha * 0.9})`;
+                        borderWidth = 2;
+                    } else if (node.isRelated || node.isSubConcept) {
+                        // Related/sub-concept nodes: use category color
+                        bgAlpha = alpha * 0.5;
+                        bgColor = `rgba(0, 0, 0, ${bgAlpha})`;
+                        const r = parseInt(node.color.slice(1, 3), 16);
+                        const g = parseInt(node.color.slice(3, 5), 16);
+                        const b = parseInt(node.color.slice(5, 7), 16);
+                        borderColor = `rgba(${r}, ${g}, ${b}, ${alpha * 0.5})`;
+                        borderWidth = 1.5;
+                    } else {
+                        // Normal nodes: white border
+                        bgAlpha = alpha * 0.7;
+                        bgColor = `rgba(0, 0, 0, ${bgAlpha})`;
+                        borderColor = `rgba(255, 255, 255, ${alpha * 0.3})`;
+                        borderWidth = 1;
+                    }
+
+                    ctx.fillStyle = bgColor;
+                    ctx.fillRect(
+                        node.displayX - textWidth / 2 - padding,
+                        labelY - textHeight / 2 - padding / 2,
+                        textWidth + padding * 2,
+                        textHeight + padding
+                    );
+
+                    ctx.strokeStyle = borderColor;
+                    ctx.lineWidth = borderWidth;
+                    ctx.strokeRect(
+                        node.displayX - textWidth / 2 - padding,
+                        labelY - textHeight / 2 - padding / 2,
+                        textWidth + padding * 2,
+                        textHeight + padding
+                    );
+
+                    // Draw text with shadow
+                    ctx.shadowBlur = 4;
+                    ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+                    ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+                    ctx.fillText(node.label, node.displayX, labelY);
+                    ctx.shadowBlur = 0;
+                }
+            });
+        }
+
+        // Mouse handling
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            
+            if (isDraggingRotation) {
+                const deltaX = mouseX - lastMouseX;
+                const deltaY = mouseY - lastMouseY;
+                rotationY += deltaX * 0.005;
+                rotationX -= deltaY * 0.005;
+                autoRotate = false;
+                lastMouseX = mouseX;
+                lastMouseY = mouseY;
+                return;
+            }
+            
+            // Find hovered node (use rotated display positions)
+            hoveredNode = null;
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+
+            // Create display nodes for hit detection
+            const displayNodesForHit = nodes.map(node => {
+                if (node.isDense) return null;
+
+                const relX = node.x - centerX;
+                const relY = node.y - centerY;
+                const relZ = node.z || 0;
+                const rotated = rotate3D(relX, relY, relZ, rotationX, rotationY);
+
+                return {
+                    original: node,
+                    displayX: centerX + rotated.x * cameraZoom,
+                    displayY: centerY + rotated.y * cameraZoom,
+                    displayZ: rotated.z
+                };
+            }).filter(n => n !== null);
+
+            // Check from front to back
+            displayNodesForHit.sort((a, b) => b.displayZ - a.displayZ);
+
+            for (const displayNode of displayNodesForHit) {
+                const node = displayNode.original;
+                const dx = mouseX - displayNode.displayX;
+                const dy = mouseY - displayNode.displayY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                // Larger hit area for clickable nodes (scaled by camera zoom)
+                const hitRadius = (node.radius + (node.clickable ? 10 : 5)) * cameraZoom;
+
+                if (dist < hitRadius) {
+                    hoveredNode = node;
+                    break;
+                }
+            }
+
+            // Update cursor
+            canvas.style.cursor = (hoveredNode && hoveredNode.clickable) ? 'pointer' : 'grab';
+        });
+        
+        let mouseDownX = 0;
+        let mouseDownY = 0;
+        let clickedNode = null;
+
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            mouseDownX = e.clientX - rect.left;
+            mouseDownY = e.clientY - rect.top;
+            lastMouseX = mouseDownX;
+            lastMouseY = mouseDownY;
+
+            if (hoveredNode && hoveredNode.clickable) {
+                clickedNode = hoveredNode;
+            } else if (!hoveredNode) {
+                isDraggingRotation = true;
+                canvas.style.cursor = 'grabbing';
+            }
+        });
+
+        canvas.addEventListener('mouseup', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseUpX = e.clientX - rect.left;
+            const mouseUpY = e.clientY - rect.top;
+
+            // Check if this was a click (not a drag)
+            const dragDist = Math.sqrt(
+                Math.pow(mouseUpX - mouseDownX, 2) +
+                Math.pow(mouseUpY - mouseDownY, 2)
+            );
+
+            // Only process click if the mouse didn't move more than 5 pixels
+            if (clickedNode && clickedNode.clickable && dragDist < 5) {
+                // Shift+click to isolate (only at level 0)
+                if (e.shiftKey && zoomLevel === 0 && clickedNode.isParent) {
+                    if (isolatedCategory === clickedNode.category) {
+                        // Toggle off if clicking the same category
+                        isolatedCategory = null;
+                    } else {
+                        isolatedCategory = clickedNode.category;
+                    }
+                    updateBreadcrumb();
+                } else {
+                    // Normal click: zoom in
+                    zoomIn(clickedNode);
+                }
+            } else if (!hoveredNode && !isDraggingRotation && dragDist < 5) {
+                // Click outside: clear isolation first, then zoom out
+                if (isolatedCategory) {
+                    isolatedCategory = null;
+                    updateBreadcrumb();
+                } else {
+                    zoomOut();
+                }
+            }
+
+            clickedNode = null;
+            isDraggingRotation = false;
+            canvas.style.cursor = hoveredNode ? 'pointer' : 'grab';
+            // Don't restart auto-rotation
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            isDraggingRotation = false;
+            hoveredNode = null;
+            // Don't restart auto-rotation
+        });
+
+        // Mouse wheel for camera zoom
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+
+            const zoomSpeed = 0.001;
+            const delta = -e.deltaY * zoomSpeed;
+
+            cameraZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, cameraZoom + delta));
+        }, { passive: false });
+
+        // Touch gesture support
+        // Helper: Get distance between two touches
+        function getTouchDistance(touch1, touch2) {
+            const dx = touch1.clientX - touch2.clientX;
+            const dy = touch1.clientY - touch2.clientY;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+
+        // Touch start
+        canvas.addEventListener('touchstart', (e) => {
+            const touches = e.touches;
+
+            if (touches.length === 2) {
+                // Two-finger pinch: start tracking for zoom
+                e.preventDefault();
+                touchStartDistance = getTouchDistance(touches[0], touches[1]);
+                touchStartZoom = cameraZoom;
+            } else if (touches.length === 1) {
+                // One-finger: track for rotation
+                const rect = canvas.getBoundingClientRect();
+                lastTouchX = touches[0].clientX - rect.left;
+                lastTouchY = touches[0].clientY - rect.top;
+
+                // Check for double-tap (reset view)
+                const now = Date.now();
+                if (now - lastTapTime < 300) {
+                    // Double-tap detected
+                    cameraZoom = 1.0;
+                    rotationX = 0;
+                    rotationY = 0;
+                    autoRotate = true;
+                    if (isolatedCategory) {
+                        isolatedCategory = null;
+                        updateBreadcrumb();
+                    }
+                }
+                lastTapTime = now;
+            }
+        }, { passive: false });
+
+        // Touch move
+        canvas.addEventListener('touchmove', (e) => {
+            const touches = e.touches;
+
+            if (touches.length === 2) {
+                // Two-finger pinch: zoom
+                e.preventDefault();
+                const currentDistance = getTouchDistance(touches[0], touches[1]);
+                const zoomRatio = currentDistance / touchStartDistance;
+                cameraZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, touchStartZoom * zoomRatio));
+            } else if (touches.length === 1) {
+                // One-finger: rotate
+                e.preventDefault();
+                const rect = canvas.getBoundingClientRect();
+                const touchX = touches[0].clientX - rect.left;
+                const touchY = touches[0].clientY - rect.top;
+
+                const deltaX = touchX - lastTouchX;
+                const deltaY = touchY - lastTouchY;
+
+                rotationY += deltaX * 0.005;
+                rotationX -= deltaY * 0.005;
+                autoRotate = false;
+
+                lastTouchX = touchX;
+                lastTouchY = touchY;
+            }
+        }, { passive: false });
+
+        // Touch end
+        canvas.addEventListener('touchend', (e) => {
+            // Reset tracking when touches end
+            if (e.touches.length < 2) {
+                touchStartDistance = 0;
+            }
+        });
+
+        // Back button
+        backButton.addEventListener('click', () => {
+            // Clear isolation first, then zoom out
+            if (isolatedCategory) {
+                isolatedCategory = null;
+                updateBreadcrumb();
+            } else {
+                zoomOut();
+            }
+        });
+        
+        // Animation loop
+        function animate() {
+            if (autoRotate) {
+                rotationY += 0.0015; // Slower rotation (half speed)
+                rotationX = Math.sin(rotationY * 0.5) * 0.15;
+            }
+            draw();
+            requestAnimationFrame(animate);
+        }
+        
+        // Initialize
+        generateNodes();
+        updateBreadcrumb();
+        animate();
+    </script>
+</body>
+</html>
